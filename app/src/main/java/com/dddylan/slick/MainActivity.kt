@@ -4,12 +4,15 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.Surface
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -75,6 +78,19 @@ class MainActivity : Activity() {
         @JavascriptInterface fun read(): String = AudioEngine.read()
         @JavascriptInterface fun start(route: String) = runOnUiThread { if (route == "cap") startCapture() else startVisualizer() }
         @JavascriptInterface fun stop() = runOnUiThread { stopAll() }
+
+        /** "auto" rotates with the sensor even when the phone's own rotation lock is on. */
+        @JavascriptInterface fun setOrientation(mode: String) = runOnUiThread {
+            requestedOrientation = when (mode) {
+                "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                "reverseLandscape" -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+                "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                "reversePortrait" -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+                else -> ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+            }
+        }
+
+        @JavascriptInterface fun currentOrientation(): String = currentOrientationName()
     }
 
     private fun startVisualizer() {
@@ -230,6 +246,25 @@ class MainActivity : Activity() {
     }
 
     // ---------- display ----------
+
+    /** Name of the orientation the screen is in right now, so the lock can hold exactly this one. */
+    private fun currentOrientationName(): String {
+        @Suppress("DEPRECATION")
+        val rot = windowManager.defaultDisplay.rotation
+        val land = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val naturalPortrait = (rot == Surface.ROTATION_0 || rot == Surface.ROTATION_180) != land
+        return if (naturalPortrait) when (rot) {
+            Surface.ROTATION_0 -> "portrait"
+            Surface.ROTATION_90 -> "landscape"
+            Surface.ROTATION_180 -> "reversePortrait"
+            else -> "reverseLandscape"
+        } else when (rot) {
+            Surface.ROTATION_0 -> "landscape"
+            Surface.ROTATION_90 -> "reversePortrait"
+            Surface.ROTATION_180 -> "reverseLandscape"
+            else -> "portrait"
+        }
+    }
 
     /** Ask for the panel's fastest mode (90/120 Hz where available) at the current resolution. */
     private fun preferHighestRefreshRate() {
