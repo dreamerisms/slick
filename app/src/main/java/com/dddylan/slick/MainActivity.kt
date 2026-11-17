@@ -157,7 +157,11 @@ class MainActivity : Activity() {
                 }
             }
             REQ_FILE -> {
-                fileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+                // Multi-select returns ClipData; single-select returns data.data.
+                val uris: Array<Uri>? = if (resultCode != RESULT_OK || data == null) null else {
+                    data.clipData?.let { c -> Array(c.itemCount) { c.getItemAt(it).uri } } ?: data.data?.let { arrayOf(it) }
+                }
+                fileCallback?.onReceiveValue(uris)
                 fileCallback = null
             }
         }
@@ -195,9 +199,16 @@ class MainActivity : Activity() {
         override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
             fileCallback?.onReceiveValue(null)
             fileCallback = callback
+            // Build the picker ourselves so "image/*,video/*" and multi-select both work.
+            val types = params.acceptTypes.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType(if (types.size == 1) types[0] else "*/*")
+            if (types.size > 1) intent.putExtra(Intent.EXTRA_MIME_TYPES, types.toTypedArray())
+            if (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             return try {
                 @Suppress("DEPRECATION")
-                startActivityForResult(params.createIntent(), REQ_FILE)
+                startActivityForResult(intent, REQ_FILE)
                 true
             } catch (e: Exception) {
                 fileCallback = null
