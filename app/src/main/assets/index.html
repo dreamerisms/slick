@@ -1,5 +1,4 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0}[hidden]{display:none!important}</style></head><body><title>Slick Liquid Visualizer</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@800&display=swap">
 <style>
 /* Layout: full-bleed liquid canvas. The HUD is a flier frame laid over it: wordmark and readouts in the left corners, one control column docked right (bottom sheet in portrait). Tap the liquid to hide or show the HUD. */
@@ -111,20 +110,21 @@ const P=[
  ['rip','Ripple depth','liquid',0,2,1],['rwide','Ripple width','liquid',0,1,.6],['ring','Ring time','liquid',0,1,.6],['tilt','Slosh','liquid',0,2,1],
  ['memb','Membrane','look',0,1,.6],['gloss','Gloss','look',0,1.5,.8],['iri','Iridescence','look',0,1,.12],
  ['glow','Glow','look',0,1.5,.6],['grain','Grain','look',0,1,.35],['bgLvl','Backdrop level','look',0,1.5,.6],['bgMove','Backdrop motion','look',0,1,.3],
- ['bgScale','Pattern scale','look',.3,3,1],['mhold','Change every (s)','look',3,120,12,1],
+ ['bgScale','Pattern scale','look',.3,3,1],
  ['tsize','Size','text',.08,.6,.3],['topac','Opacity','text',0,1,.92],['tdrift','Drift / looseness','text',0,1,.3],['tsub','Submerge','text',0,1,.5],['tpulse','Beat ripples','text',0,1,.6]
 ];
 const PAL={ACID:['#7dff2a','#00c8a0','#eaff00'],MAGMA:['#ff5a1e','#b01408','#ffd21e'],UV:['#b44cff','#1a3cff','#00f0ff'],CHROME:['#cfe0ff','#6a4cff','#ff7ad9']};
 const BLENDS=['normal','add','screen','multiply','overlay','difference'];
-const BGS=['ink','solid','gradient','caustic','halftone','grid','checker','media'];
+const BGS=['ink','solid','gradient','caustic','halftone','grid','checker'];
 const FONTS={POSTER:'900 380px "Big Shoulders Display"',WIDE:'800 300px "Unbounded"',MONO:'700 320px "JetBrains Mono"'};
-const S={cA:PAL.ACID[0],cB:PAL.ACID[1],cC:PAL.ACID[2],cT:'#f2fff0',cD:'#123a24',bgMode:'ink',tinv:false,morder:'shuffle',mrot:'auto',mfit:'fill',rlock:'',tmode:'float',ton:true,str:'SCENE 01',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
+const S={cA:PAL.ACID[0],cB:PAL.ACID[1],cC:PAL.ACID[2],cT:'#f2fff0',cD:'#123a24',bgMode:'ink',tinv:false,rlock:'',tmode:'float',ton:true,str:'SCENE 01',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
 for(const p of P)S[p[0]]=p[5];
 try{Object.assign(S,JSON.parse(localStorage.getItem('slick01')||'{}'));}catch(e){}
 S.src='demo';S.sound=false;
+if(!['ink','solid','gradient','caustic','halftone','grid','checker'].includes(S.bgMode))S.bgMode='ink';
+try{indexedDB.deleteDatabase('slick');}catch(e){}
 const save=()=>{try{localStorage.setItem('slick01',JSON.stringify(S));}catch(e){}};
 const $=id=>document.getElementById(id);
-let media=[];
 const NATIVE=window.SlickNative||null;
 
 /* ---------- GL ---------- */
@@ -183,12 +183,7 @@ if(uFirst>.5){for(int i=0;i<8;i++)w+=uK[i].y*uS[i].w*sgk(i,1.+1.6*uRw);
 h+=w;h*=.9997;if(m>.5){h*=.85;w*=.85;}
 o=vec4(clamp(h,-40.,40.),clamp(w,-20.,20.),0,1);}`,
 /* shading: wet-glass normals from ripples + liquid bulge, neon membrane, halo, film iridescence, text layer */
-ren:`uniform sampler2D uC,uH;uniform vec3 cA,cB,cC,cT,cD;uniform float uMemb,uGloss,uIri,uGlow,uGrain,uRip,uFlash,uBass,uTop,uSub,uBlend,uEdge,uRw,uBgMode,uBgLvl,uBgMove,uPat,uPin;uniform sampler2D uM0,uM1;uniform vec4 uMA,uMR;uniform vec2 uKo;
-/* place media on screen: rotate by th, then fill (crop) or fit whole (letterbox) */
-vec4 msamp(sampler2D t,vec2 u,float ma,float th){vec2 b=vec2((u.x-.5)*asp,u.y-.5);float c=cos(th),s=sin(th);
- float mae=abs(s)>.5?1./ma:ma;vec2 box=((asp>mae)==(uMR.z<.5))?vec2(asp,asp/mae):vec2(mae,1.);b/=box;
- vec2 m=vec2(b.x*c+b.y*s,-b.x*s+b.y*c)/uMA.w+uKo+.5;
- return vec4(texture(t,m).rgb,step(0.,m.x)*step(m.x,1.)*step(0.,m.y)*step(m.y,1.));}
+ren:`uniform sampler2D uC,uH;uniform vec3 cA,cB,cC,cT,cD;uniform float uMemb,uGloss,uIri,uGlow,uGrain,uRip,uFlash,uBass,uTop,uSub,uBlend,uEdge,uRw,uBgMode,uBgLvl,uBgMove,uPat,uPin;
 vec3 backdrop(vec2 u){vec2 q=vec2(u.x*asp,u.y);float t=uTime*uBgMove;
  if(uBgMode<.5)return vec3(0);
  if(uBgMode<1.5)return cD*uBgLvl;
@@ -197,8 +192,7 @@ vec3 backdrop(vec2 u){vec2 q=vec2(u.x*asp,u.y);float t=uTime*uBgMove;
  if(uBgMode<4.5){vec2 g=q*26.*uPat;vec2 f=fract(g)-.5;float rr=.18+.16*sin(q.x*2.6+t*2.)+.12*sin(q.y*3.4-t*1.6);return cD*smoothstep(rr+.06,rr,length(f))*uBgLvl*1.4;}
  if(uBgMode<5.5){vec2 g=q*9.*uPat+vec2(0,t*.8);vec2 d=abs(fract(g)-.5);float l=smoothstep(.465,.5,max(d.x,d.y));return cD*(l*.9+.05)*uBgLvl*1.3;}
  if(uBgMode<6.5){vec2 c=q-vec2(asp*.5,.5);float a=t*.5;c=mat2(cos(a),sin(a),-sin(a),cos(a))*c;vec2 cl=floor(c*5.*uPat);return cD*(.04+.96*mod(cl.x+cl.y,2.))*uBgLvl*1.3;}
- vec4 a=msamp(uM1,u,uMA.y,uMR.y),b=msamp(uM0,u,uMA.x,uMR.x);vec3 bc=cD*.1;
- vec3 m=mix(mix(bc,a.rgb,a.a),mix(bc,b.rgb,b.a),uMA.z);return m*uBgLvl*1.5;}
+ return vec3(0);}
 vec3 blendT(vec3 col,float tm){vec3 b=cT;
  if(uBlend>4.5)b=abs(col-cT);else if(uBlend>3.5)b=mix(2.*col*cT,1.-2.*(1.-col)*(1.-cT),step(.5,col));else if(uBlend>2.5)b=col*cT;else if(uBlend>1.5)b=1.-(1.-col)*(1.-cT);else if(uBlend>.5)b=min(col+cT,1.);
  return mix(col,b,tm);}
@@ -340,15 +334,9 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
  if(S.tab==='look'){h+=`<div class="grp"><span class="lab">Palette</span><div class="seg">${Object.keys(PAL).map(k=>`<button data-pal="${k}">${k}</button>`).join('')}</div>
   <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="Liquid color"><input type="color" id="cC" value="${S.cC}" aria-label="Second liquid color"><input type="color" id="cB" value="${S.cB}" aria-label="Void color"><span class="lab">Liquid / mix / void</span></div></div>`;
-  h+=seg('bgMode',BGS.map(b=>[b,b==='media'?'Photo / video':b]),'Backdrop behind the liquid');
-  if(S.bgMode==='media'){const ni=media.filter(m=>m.type==='image').length,nv=media.length-ni;
-   h+=`<div class="grp"><span class="lab">Your media</span><p class="note">${media.length?`${ni} image${ni===1?'':'s'}, ${nv} video${nv===1?'':'s'}. They shuffle at random; each one shows for the time below, then the next plays. Auto orientation turns portrait media to fill a landscape screen and the reverse.`:'Add one or more photos or videos. They stay saved in Slick until you clear them.'}</p>
-    <div class="seg"><button id="madd">Add photos / videos</button>${media.length>1?'<button id="mnext">Next</button>':''}${media.length?'<button id="mclear">Clear all</button>':''}</div>
-    <input type="file" id="mfile" accept="image/*,video/*" multiple hidden></div>`;
-   h+=seg('morder',[['shuffle','Shuffle'],['order','In order']],'Play order');
-   h+=seg('mrot',[['auto','Auto'],['0','0°'],['90','90°'],['180','180°'],['270','270°']],'Orientation');
-   h+=seg('mfit',[['fill','Fill screen'],['fit','Show whole']],'Fit');}
-  else h+=`<div class="cols"><input type="color" id="cD" value="${S.cD}" aria-label="Backdrop color"><span class="lab">Backdrop color</span></div>`;}
+  h+=seg('bgMode',BGS.map(b=>[b,b]),'Backdrop behind the liquid');
+
+  h+=`<div class="cols"><input type="color" id="cD" value="${S.cD}" aria-label="Backdrop color"><span class="lab">Backdrop color</span></div>`;}
  if(S.tab==='liquid')h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Tilt direction');
  if(S.tab==='text'){h+=seg('ton',[[true,'On'],[false,'Off']],'Text layer');
   h+=seg('tmode',[['float','Float'],['tether','Tethered'],['pinned','Pinned overlay']],'Behavior');
@@ -364,14 +352,11 @@ $('body').addEventListener('input',e=>{const el=e.target;
  else if(el.type==='color'){S[el.id]=el.value;if(el.id==='cA')document.documentElement.style.setProperty('--volt',S.cA);}
  else if(el.id==='str'){S.str=el.value;drawText();}
  save();});
-$('body').addEventListener('change',e=>{if(e.target.id==='file')useFile(e.target.files[0]);if(e.target.id==='mfile')addMedia(e.target.files);});
+$('body').addEventListener('change',e=>{if(e.target.id==='file')useFile(e.target.files[0]);});
 $('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!el)return;
  if(el.dataset.pal){[S.cA,S.cB,S.cC]=PAL[el.dataset.pal];S.iri=el.dataset.pal==='CHROME'?.85:.12;}
  else if(el.id==='fs'){const d=document.documentElement;(document.fullscreenElement?document.exitFullscreen():d.requestFullscreen&&d.requestFullscreen()||Promise.reject()).catch(()=>note('Fullscreen is not available in this view.',1));return;}
  else if(el.id==='reset'){for(const p of P)S[p[0]]=p[5];}
- else if(el.id==='madd'){$('mfile').click();return;}
- else if(el.id==='mnext'){mediaNext();return;}
- else if(el.id==='mclear'){clearMedia();}
  else if(el.id==='copyset'){
   const code='SLK1.'+btoa(unescape(encodeURIComponent(JSON.stringify(lookOf()))));$('code').value=code;
   Promise.resolve().then(()=>navigator.clipboard.writeText(code)).then(()=>note('Settings copied. Paste the code into Slick on your other device.'),()=>{$('code').select();note('Select and copy the code in the box.');});return;}
@@ -381,7 +366,6 @@ $('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!e
    if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
   if(k==='sound'){S.sound=v==='true';if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}
   else if(k==='ton')S.ton=v==='true';else if(k==='tinv')S.tinv=v==='true';
-  else if(k==='morder'){S.morder=v;bag=[];}
   else if(k==='tmode'){S.tmode=v;if(v==='float'){const L=Math.hypot(tvel[0],tvel[1]);tvel=L>.01?[tvel[0]/L*.13,tvel[1]/L*.13]:[.11,.07];}}else if(k==='q'){S.q=+v;resize();}else{S[k]=v;if(k==='font')drawText();}}
  else return;
  save();paint();});
@@ -391,7 +375,7 @@ paint();
 function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
 function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
  for(const k of['cA','cB','cC','cT','cD'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
- for(const k of['str','font','blend','tmode','morder','mrot','mfit'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['str','font','blend','tmode'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
  if(BGS.includes(o.bgMode))S.bgMode=o.bgMode;
  for(const k of['ton','tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
  if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
@@ -417,7 +401,7 @@ paintSlots();
 const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
 function randomize(){
  /* everything that shapes the liquid and its look; text, audio source and backdrop stay as they are */
- const keep=new Set(['bpm','tsize','topac','tdrift','tsub','tpulse','bgLvl','bgMove','bgScale','mhold']);
+ const keep=new Set(['bpm','tsize','topac','tdrift','tsub','tpulse','bgLvl','bgMove','bgScale']);
  for(const p of P){if(keep.has(p[0])||p[6]===1)continue;S[p[0]]=+(p[3]+(p[4]-p[3])*(.1+.8*Math.random())).toFixed(3);}
  S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
  if(Math.random()<.5)S.grav=0;S.iri=Math.random()<.7?Math.random()*.3:.6+Math.random()*.4;
@@ -426,50 +410,6 @@ function randomize(){
  save();paint();toast('Randomized');}
 holdable($('rand'),600,randomize,()=>toast('Hold to randomize'));
 
-/* ---------- photo / video backdrop ---------- */
-const MT=[gl.createTexture(),gl.createTexture()];
-for(const t of MT){gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,255]));
- gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
- gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);}
-let mCur=-1,mAsp=[1,1],mFade=1,mT0=0,mVid=null,mFrame=false,mLoad=0;
-function upload(tex,src){gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);}
-function stopVideo(){if(mVid){mVid.pause();mVid.removeAttribute('src');mVid.load();mVid=null;}}
-let bag=[];
-function mediaNext(){const n=media.length;if(!n)return;let i=0;
- if(n>1&&S.morder==='order')i=(mCur+1)%n;
- else if(n>1){/* shuffle bag: every item plays once per round, never the same one twice in a row */
-  if(!bag.length){bag=[...Array(n).keys()].sort(()=>Math.random()-.5);if(bag[0]===mCur)bag.push(bag.shift());}
-  i=bag.shift();if(i>=n)i=0;}
- showMedia(i);}
-function showMedia(i){const it=media[i];if(!it)return;const tok=++mLoad;mCur=i;mT0=performance.now()/1000;stopVideo();
- MT.reverse();mAsp=[mAsp[0],mAsp[0]];
- if(it.type==='video'){const v=document.createElement('video');v.muted=true;v.playsInline=true;v.loop=true;v.src=it.url;
-  v.addEventListener('loadeddata',()=>{if(tok!==mLoad)return;mAsp[0]=v.videoWidth/v.videoHeight||1;upload(MT[0],v);mFade=0;});
-  const onFrame=()=>{if(tok!==mLoad)return;mFrame=true;if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(onFrame);};
-  if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(onFrame);
-  v.play().catch(()=>{});mVid=v;}
- else{const img=new Image();img.onload=()=>{if(tok!==mLoad)return;
-   /* cap the texture at 2048 px so big phone photos stay light on the GPU */
-   const k=Math.min(1,2048/Math.max(img.width,img.height));let src=img;
-   if(k<1){const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);src=c;}
-   mAsp[0]=img.width/img.height||1;upload(MT[0],src);mFade=0;};img.src=it.url;}}
-function mediaTick(t,fdt){mFade=Math.min(1,mFade+fdt/.9);
- const on=S.bgMode==='media'&&media.length;
- if(!on){if(mVid&&!mVid.paused)mVid.pause();return;}
- if(mCur<0||mCur>=media.length){mediaNext();return;}
- if(mVid){if(mVid.paused)mVid.play().catch(()=>{});if((mFrame||!mVid.requestVideoFrameCallback)&&mVid.readyState>=2){upload(MT[0],mVid);mFrame=false;}}
- if(media.length>1&&performance.now()/1000-mT0>S.mhold)mediaNext();}
-const RIGHT=Math.PI/2;
-function mTheta(ma){if(S.mrot!=='auto')return {'0':0,'90':RIGHT,'180':Math.PI,'270':-RIGHT}[S.mrot]||0;
- if((ma>1)===(ASP>1))return 0;const ang=(screen.orientation&&screen.orientation.angle)||0;return ang===270?-RIGHT:RIGHT;}
-/* media persists in IndexedDB so it survives restarts */
-const idb=new Promise(res=>{try{const r=indexedDB.open('slick',1);r.onupgradeneeded=()=>r.result.createObjectStore('media',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(e){res(null);}});
-const tx=(mode,fn)=>idb.then(db=>db&&new Promise(res=>{try{const t=db.transaction('media',mode);const r=fn(t.objectStore('media'));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>res(null);}catch(e){res(null);}}));
-tx('readonly',st=>st.getAll()).then(rows=>{if(!rows||!rows.length)return;media=rows.map(r=>({id:r.id,type:r.type,url:URL.createObjectURL(r.blob)}));if(S.tab==='look')paint();});
-function addMedia(files){const list=[...files].filter(f=>/^(image|video)\//.test(f.type));if(!list.length){toast('Choose photos or videos');return;}
- list.forEach((f,i)=>{const it={id:Date.now()+'-'+i,type:f.type.startsWith('video')?'video':'image',url:URL.createObjectURL(f)};media.push(it);tx('readwrite',st=>st.put({id:it.id,type:it.type,blob:f}));});
- S.bgMode='media';save();bag=[];toast(list.length+' added');showMedia(media.length-list.length+(Math.random()*list.length|0));paint();}
-function clearMedia(){stopVideo();media.forEach(m=>URL.revokeObjectURL(m.url));media=[];mCur=-1;bag=[];tx('readwrite',st=>st.clear());toast('Media cleared');}
 /* ---------- in-app rotation lock (native only; ignores the phone's own lock) ---------- */
 const rl=$('rlock');
 function paintLock(){rl.setAttribute('aria-pressed',S.rlock?'true':'false');rl.querySelector('span').textContent=S.rlock?'Locked':'Auto';
@@ -490,7 +430,7 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const gs=S.tinv?-1:1;gRaw=tiltSeen?[gSen[0]*gs,gSen[1]*gs]:[0,-gs];
  for(let i=0;i<2;i++)gBase[i]+=(gRaw[i]-gBase[i])*Math.min(1,fdt/3);
  const G=[(gRaw[0]-gBase[0])*S.tilt,(gRaw[1]-gBase[1])*S.tilt];
- const gv=gRaw;const GG=[G[0]+gv[0]*S.grav*2.5,G[1]+gv[1]*S.grav*2.5];mediaTick(t,fdt);let Gd=[(G[0]-gPrev[0])*.6,(G[1]-gPrev[1])*.6];gPrev=G;
+ const gv=gRaw;const GG=[G[0]+gv[0]*S.grav*2.5,G[1]+gv[1]*S.grav*2.5];let Gd=[(G[0]-gPrev[0])*.6,(G[1]-gPrev[1])*.6];gPrev=G;
  if(ptr.on){Gd[0]+=ptr.vx*.004*S.tilt;Gd[1]+=ptr.vy*.004*S.tilt;}
  const th=S.tsize,tw=th*4,hx=tHalf[0]*th,hy=tHalf[1]*th,sp=S.tdrift*.5;let tv=[0,0];
  if(S.ton&&S.tmode==='pinned'){tpos=[ASP/2,.5];}
@@ -519,7 +459,7 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
   if(k===0)txHit=0;}
  run(PR.ren,null,{...com,uC:C.r.t,uH:H.r.t,cA:hex(S.cA),cB:hex(S.cB),cC:hex(S.cC),cT:hex(S.cT).map(v=>Math.pow(v,1/2.2)),
   uMemb:S.memb,uGloss:S.gloss,uIri:S.iri,uGlow:S.glow,uGrain:S.grain,uRip:S.rip,uFlash:flash,uBass:lvl[0],uTop:S.topac,uSub:S.tsub,uBlend:BLENDS.indexOf(S.blend),uTon:S.ton?1:0,cD:hex(S.cD),uEdge:S.edge,uRw:S.rwide,
-  uBgMode:Math.max(0,BGS.indexOf(S.bgMode)),uBgLvl:S.bgLvl,uBgMove:S.bgMove,uPat:S.bgScale,uM0:MT[0],uM1:MT[1],uMR:[mTheta(mAsp[0]),mTheta(mAsp[1]),S.mfit==='fit'?1:0,0],uMA:[mAsp[0],mAsp[1],mFade,1.06+.08*S.bgMove*(.5+.5*Math.sin(t*.07))],uKo:[.03*S.bgMove*Math.sin(t*.05),.03*S.bgMove*Math.cos(t*.043)],uPin:S.tmode==='pinned'?1:0});}
+  uBgMode:Math.max(0,BGS.indexOf(S.bgMode)),uBgLvl:S.bgLvl,uBgMove:S.bgMove,uPat:S.bgScale,uPin:S.tmode==='pinned'?1:0});}
 requestAnimationFrame(frame);
 })();
 </script>
