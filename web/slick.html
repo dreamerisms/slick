@@ -120,12 +120,14 @@ const FONTS={POSTER:'900 380px "Big Shoulders Display"',WIDE:'800 300px "Unbound
 const S={cA:PAL.ACID[0],cB:PAL.ACID[1],cC:PAL.ACID[2],cT:'#f2fff0',cD:'#123a24',bgMode:'ink',tinv:false,rlock:'',tmode:'float',ton:true,str:'SCENE 01',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
 for(const p of P)S[p[0]]=p[5];
 try{Object.assign(S,JSON.parse(localStorage.getItem('slick01')||'{}'));}catch(e){}
-S.src='demo';S.sound=false;
+S.src='demo';S.sound=false;S.scene='slick';
 if(!['ink','solid','gradient','caustic','halftone','grid','checker'].includes(S.bgMode))S.bgMode='ink';
 try{indexedDB.deleteDatabase('slick');}catch(e){}
 const save=()=>{try{localStorage.setItem('slick01',JSON.stringify(S));}catch(e){}};
 const $=id=>document.getElementById(id);
 const NATIVE=window.SlickNative||null;
+let SCENE='slick';try{SCENE=localStorage.getItem('slickScene')||'slick';}catch(e){}
+if(NATIVE&&SCENE==='hyper'){location.replace('hyper.html');return;}
 
 /* ---------- GL ---------- */
 const cv=$('gl');
@@ -326,7 +328,8 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
  const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
  let h='';
- if(S.tab==='source'){h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
+ if(S.tab==='source'){if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper']],'Scene');
+  h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
   h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
   h+=`<p class="note${S._warn?' warn':''}" id="note">${S._note||(NATIVE?'Phone audio hears whatever is playing, Spotify included. Capture is the full-quality route: Android asks each session, choose Entire screen.':'The demo beat plays a 174 BPM jungle pattern. Set it audible to route it through the real hit detection.')}</p>`;
   h+=seg('q',[[0,'Lite'],[1,'Mid'],[2,'Max']],'Simulation detail');
@@ -362,6 +365,7 @@ $('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!e
   Promise.resolve().then(()=>navigator.clipboard.writeText(code)).then(()=>note('Settings copied. Paste the code into Slick on your other device.'),()=>{$('code').select();note('Select and copy the code in the box.');});return;}
  else if(el.id==='applyset'){try{const raw=$('code').value.trim();if(!raw.startsWith('SLK1.'))throw 0;applyLook(JSON.parse(decodeURIComponent(escape(atob(raw.slice(5))))));note('Look loaded.');}catch(x){note('That code could not be read. Copy it again from the other device.',1);}return;}
  else if(el.dataset.set){const k=el.dataset.set;let v=el.dataset.val;
+  if(k==='scene'){if(v==='hyper'){try{localStorage.setItem('slickScene','hyper');}catch(x){}location.replace('hyper.html');}return;}
   if(k==='src'){if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
    if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
   if(k==='sound'){S.sound=v==='true';if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}
@@ -417,7 +421,9 @@ function paintLock(){rl.setAttribute('aria-pressed',S.rlock?'true':'false');rl.q
 if(NATIVE&&NATIVE.setOrientation){rl.hidden=false;paintLock();try{NATIVE.setOrientation(S.rlock||'auto');}catch(e){}
  rl.addEventListener('click',()=>{try{if(S.rlock){S.rlock='';NATIVE.setOrientation('auto');toast('Rotation unlocked');}
   else{S.rlock=String(NATIVE.currentOrientation());NATIVE.setOrientation(S.rlock);toast('Rotation locked');}}catch(e){}save();paintLock();});}
-if(NATIVE)setTimeout(()=>{note('Starting phone audio...');NATIVE.start('vis');},400);
+/* keep a capture session alive across scene switches; otherwise start phone audio */
+if(NATIVE)setTimeout(()=>{let route='';try{route=String(NATIVE.read()).split(',')[5]||'';}catch(e){}
+ if(route==='capture')window.__slickStatus('cap','running','Capturing phone audio at full quality.');else{note('Starting phone audio...');NATIVE.start('vis');}},400);
 
 /* ---------- frame loop: fixed 120 Hz simulation ticks, one render per display frame ---------- */
 const sA=new Float32Array(32),sK=new Float32Array(32);let last=performance.now()/1000,acc=0,fpsS=60,fpsT=0;

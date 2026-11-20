@@ -1,0 +1,546 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0}[hidden]{display:none!important}</style></head><body><title>Hyper Particle Field</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@800&display=swap">
+<style>
+/* Layout: full-bleed particle canvas. The HUD is a flier frame laid over it: wordmark and readouts in the left corners, one control column docked right (bottom sheet in portrait). Tap the field to hide or show the HUD; drag to orbit. */
+:root{
+  --ink:#0b0910; --fg:#f2eaff; --dim:#9a8fae; --line:rgba(242,234,255,.16); --panel:rgba(11,9,16,.74); --volt:#da1fff;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);font-family:var(--mono);font-size:11px}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.hud{position:fixed;inset:0;pointer-events:none;display:grid;grid-template-columns:minmax(0,1fr) min(340px,48%);gap:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-bottom,0px))}
+.frame{display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.mark{font-family:var(--display);font-weight:900;font-size:clamp(34px,9vh,64px);line-height:.82;letter-spacing:-.01em;text-transform:uppercase;color:var(--volt);mix-blend-mode:difference}
+.mark small{display:block;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.22em;color:var(--fg);margin-top:8px;line-height:1.5}
+.lowl{display:flex;flex-direction:column;gap:9px;align-items:flex-start;min-width:0}
+.rlock{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);padding:7px 10px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.rlock b{font-weight:400;color:var(--dim)}
+.rlock svg{width:11px;height:11px;flex:none}
+.rlock[aria-pressed="true"]{background:var(--volt);border-color:var(--volt);color:var(--ink);font-weight:700}
+.rlock[aria-pressed="true"] b{color:var(--ink)}
+.read{display:flex;flex-wrap:wrap;gap:4px 14px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg);font-variant-numeric:tabular-nums;text-shadow:0 0 6px #000}
+.read b{font-weight:400;color:var(--dim)}
+.hits{display:inline-flex;gap:4px;vertical-align:middle}
+.hits i{width:9px;height:9px;border:1px solid var(--fg);opacity:.35}
+.hits i.on{background:var(--volt);border-color:var(--volt);opacity:1}
+.panel{pointer-events:auto;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tabs{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:.14em;text-transform:uppercase}
+button:focus-visible,input:focus-visible,select:focus-visible,label.btn:focus-within{outline:1px solid var(--volt);outline-offset:1px}
+.tabs button{padding:11px 0;color:var(--dim);font-size:9px;letter-spacing:.06em}
+.tabs button[aria-selected="true"]{color:var(--ink);background:var(--volt);font-weight:700}
+.body{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.row{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
+.row output{color:var(--volt);font-variant-numeric:tabular-nums}
+.row input[type=range]{grid-column:1/-1}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:none;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--fg);opacity:.5}
+input[type=range]::-moz-range-track{height:1px;background:var(--fg);opacity:.5}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;margin-top:-9px;background:var(--volt);border:0;border-radius:0}
+input[type=range]::-moz-range-thumb{width:10px;height:18px;background:var(--volt);border:0;border-radius:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.btn{border:1px solid var(--line);padding:8px 10px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:700}
+.lab{color:var(--dim);letter-spacing:.2em;text-transform:uppercase;font-size:10px}
+.grp{display:flex;flex-direction:column;gap:8px}
+.cols{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);background:none}
+input[type=text],select{font:inherit;color:var(--fg);background:rgba(242,234,255,.06);border:1px solid var(--line);padding:8px;width:100%;letter-spacing:.08em;border-radius:0}
+.note{color:var(--dim);line-height:1.6;letter-spacing:.04em}
+.note.warn{color:var(--fg)}
+.foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,2.2fr);border-top:1px solid var(--line)}
+.foot button{position:relative;overflow:hidden;padding:11px 6px;font-size:10px;border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
+.foot button:first-child{border-left:0}
+.foot button::after{content:"";position:absolute;inset:0;background:var(--volt);mix-blend-mode:difference;transform:scaleX(var(--p,0));transform-origin:left;pointer-events:none}
+.foot .sw{width:10px;height:10px;border:1px solid var(--fg);flex:none}
+.foot .rand{color:var(--volt);font-weight:700}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);padding:8px 14px;background:var(--panel);border:1px solid var(--line);letter-spacing:.14em;text-transform:uppercase;font-size:10px;pointer-events:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);max-width:calc(100% - 32px);text-align:center}
+#fatal{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;line-height:1.7}
+@media (max-aspect-ratio:1/1){
+  .hud{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 54%}
+  .frame{flex-direction:row;align-items:flex-start;gap:12px}
+  .read{justify-content:flex-end;text-align:right}
+  .lowl{align-items:flex-end}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<canvas id="gl"></canvas>
+<div class="hud" id="hud">
+  <div class="frame">
+    <div class="mark">Hyper<small>SCENE 02 / PARTICLES<br>LOOK-DEV BUILD</small></div>
+    <div class="lowl">
+    <button class="rlock" id="rlock" aria-pressed="false" hidden><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5.5"/><path id="shackle" d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg><b>Rotation</b><span>Auto</span></button>
+    <div class="read">
+      <span><b>FPS</b> <span id="rFps">--</span></span>
+      <span><b>SIM</b> <span id="rSim">--</span></span>
+      <span><b>IN</b> <span id="rIn">DEMO</span></span>
+      <span><b>GYRO</b> <span id="rTilt">DRAG</span></span>
+      <span><b>MOVE</b> <span id="rMove">0.00</span></span>
+      <span><b>K S H</b> <span class="hits"><i id="h0"></i><i id="h1"></i><i id="h2"></i></span></span>
+    </div>
+    </div>
+  </div>
+  <div class="panel" id="panel">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="body" id="body"></div>
+    <div class="foot" id="foot">
+      <button class="slot" data-slot="0" aria-label="Preset 1"><i class="sw"></i>1</button>
+      <button class="slot" data-slot="1" aria-label="Preset 2"><i class="sw"></i>2</button>
+      <button class="slot" data-slot="2" aria-label="Preset 3"><i class="sw"></i>3</button>
+      <button class="rand" id="rand">Hold: Randomize</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div id="fatal" hidden>This device's browser can't run the particle simulation (it needs WebGL2 with float render targets).</div>
+
+<script>
+(()=>{
+'use strict';
+/* ---------- scene manifest: every control, with the safe range that keeps the look intact ---------- */
+const P=[
+ ['bpm','Demo tempo','source',90,220,174,1],
+ ['kick','Shockwave','react',0,1,.6],['snare','Twist','react',0,1,.55],['hat','Sparkle','react',0,1,.5],
+ ['burst','Impact force','react',0,2,1],['pump','Bass swell','react',0,1.5,.6],['flash','Flash','react',0,1,.35],
+ ['speed','Flow speed','field',.01,.3,.08,.005],['curl','Curl scale','field',.0003,.003,.0012,.0001],['radius','Spread','field',.1,1.2,.65],
+ ['die','Respawn','field',0,.02,.004,.0005],['coh','Cohesion','field',0,3,1],['orbit','Auto orbit','field',0,1,.3],
+ ['look','Look-around','motion',0,2,1],['inertia','Inertia','motion',0,2,1],['warp','Road warp','motion',0,2,1],
+ ['cruise','Cruise','motion',0,1,0],['tiltp','Tilt parallax','motion',0,1,.5],
+ ['psize','Particle size','look',1,14,6],['mblur','Motion blur','look',0,8,4.5],['mdist','Streak length','look',20,300,140,1],
+ ['bloom','Bloom','look',0,2,.5],['bloomR','Bloom radius','look',.3,2,1],['grain','Grain','look',0,1,.12],
+ ['fog','Depth fade','look',0,1,.4],['bright','Brightness','look',.3,2,1],
+ ['tsize','Size','text',.08,.6,.3],['topac','Opacity','text',0,1,.92],['tdrift','Drift / looseness','text',0,1,.3]
+];
+const PAL={HYPER:['#da1fff','#a6ff00','#17131f'],ACID:['#7dff2a','#00c8a0','#050a07'],MAGMA:['#ff5a1e','#ffd21e','#140604'],UV:['#b44cff','#00f0ff','#07051a'],ICE:['#e8f4ff','#3a7bff','#03060e']};
+const BLENDS=['normal','add','screen','multiply','overlay','difference'];
+const FONTS={POSTER:'900 380px "Big Shoulders Display"',WIDE:'800 300px "Unbounded"',MONO:'700 320px "JetBrains Mono"'};
+const S={cA:PAL.HYPER[0],cB:PAL.HYPER[1],cBg:PAL.HYPER[2],cT:'#f2eaff',tinv:false,rlock:'',tmode:'pinned',ton:false,str:'HYPER',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
+for(const p of P)S[p[0]]=p[5];
+try{Object.assign(S,JSON.parse(localStorage.getItem('hyper01')||'{}'));}catch(e){}
+S.src='demo';S.sound=false;S.scene='hyper';
+const save=()=>{try{localStorage.setItem('hyper01',JSON.stringify(S));}catch(e){}};
+const $=id=>document.getElementById(id);
+const NATIVE=window.SlickNative||null;
+try{localStorage.setItem('slickScene','hyper');}catch(e){}
+
+/* ---------- GL ---------- */
+const cv=$('gl');
+const gl=cv.getContext('webgl2',{alpha:false,antialias:false,powerPreference:'high-performance',desynchronized:true});
+const extF=gl&&gl.getExtension('EXT_color_buffer_float');
+if(!gl||!(extF||gl.getExtension('EXT_color_buffer_half_float'))){$('fatal').hidden=false;$('hud').hidden=true;return;}
+/* positions live in world units (about ±300); half floats are too coarse for small curl steps, so prefer 32-bit */
+const SIM32=(()=>{if(!extF)return false;const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,1,1,0,gl.RGBA,gl.FLOAT,null);
+ const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+ const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(f);gl.deleteTexture(t);return ok;})();
+
+const VS=`#version 300 es
+out vec2 uv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.-1.,0,1);}`;
+const FHEAD=`#version 300 es
+precision highp float;precision highp sampler2D;
+in vec2 uv;out vec4 o;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+`;
+/* 4D simplex noise with derivatives (Ashima Arts, MIT) and curl, as used by the dddylan.com hero */
+const SNOISE4=`
+vec4 mod289(vec4 x){return x-floor(x*(1./289.))*289.;}float mod289(float x){return x-floor(x*(1./289.))*289.;}
+vec4 permute(vec4 x){return mod289(((x*34.)+1.)*x);}float permute(float x){return mod289(((x*34.)+1.)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-.85373472095314*r;}float taylorInvSqrt(float r){return 1.79284291400159-.85373472095314*r;}
+vec4 grad4(float j,vec4 ip){const vec4 ones=vec4(1,1,1,-1);vec4 p,s;p.xyz=floor(fract(vec3(j)*ip.xyz)*7.)*ip.z-1.;p.w=1.5-dot(abs(p.xyz),ones.xyz);s=vec4(lessThan(p,vec4(0)));p.xyz=p.xyz+(s.xyz*2.-1.)*s.www;return p;}
+vec4 snoise4(vec4 v){const vec4 C=vec4(.138196601125011,.276393202250021,.414589803375032,-.447213595499958);
+ vec4 i=floor(v+dot(v,vec4(.309016994374947451)));vec4 x0=v-i+dot(i,C.xxxx);vec4 i0;vec3 isX=step(x0.yzw,x0.xxx);vec3 isYZ=step(x0.zww,x0.yyz);
+ i0.x=isX.x+isX.y+isX.z;i0.yzw=1.-isX;i0.y+=isYZ.x+isYZ.y;i0.zw+=1.-isYZ.xy;i0.z+=isYZ.z;i0.w+=1.-isYZ.z;
+ vec4 i3=clamp(i0,0.,1.),i2=clamp(i0-1.,0.,1.),i1=clamp(i0-2.,0.,1.);
+ vec4 x1=x0-i1+C.xxxx,x2=x0-i2+C.yyyy,x3=x0-i3+C.zzzz,x4=x0+C.wwww;i=mod289(i);
+ float j0=permute(permute(permute(permute(i.w)+i.z)+i.y)+i.x);
+ vec4 j1=permute(permute(permute(permute(i.w+vec4(i1.w,i2.w,i3.w,1.))+i.z+vec4(i1.z,i2.z,i3.z,1.))+i.y+vec4(i1.y,i2.y,i3.y,1.))+i.x+vec4(i1.x,i2.x,i3.x,1.));
+ vec4 ip=vec4(1./294.,1./49.,1./7.,0.);
+ vec4 p0=grad4(j0,ip),p1=grad4(j1.x,ip),p2=grad4(j1.y,ip),p3=grad4(j1.z,ip),p4=grad4(j1.w,ip);
+ vec4 nr=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=nr.x;p1*=nr.y;p2*=nr.z;p3*=nr.w;p4*=taylorInvSqrt(dot(p4,p4));
+ vec3 v0=vec3(dot(p0,x0),dot(p1,x1),dot(p2,x2));vec2 v1=vec2(dot(p3,x3),dot(p4,x4));
+ vec3 m0=max(.5-vec3(dot(x0,x0),dot(x1,x1),dot(x2,x2)),0.);vec2 m1=max(.5-vec2(dot(x3,x3),dot(x4,x4)),0.);
+ vec3 t0=-6.*m0*m0*v0;vec2 t1=-6.*m1*m1*v1;vec3 q0=m0*m0*m0;vec2 q1=m1*m1*m1;
+ float dx=t0[0]*x0.x+t0[1]*x1.x+t0[2]*x2.x+t1[0]*x3.x+t1[1]*x4.x+q0[0]*p0.x+q0[1]*p1.x+q0[2]*p2.x+q1[0]*p3.x+q1[1]*p4.x;
+ float dy=t0[0]*x0.y+t0[1]*x1.y+t0[2]*x2.y+t1[0]*x3.y+t1[1]*x4.y+q0[0]*p0.y+q0[1]*p1.y+q0[2]*p2.y+q1[0]*p3.y+q1[1]*p4.y;
+ float dz=t0[0]*x0.z+t0[1]*x1.z+t0[2]*x2.z+t1[0]*x3.z+t1[1]*x4.z+q0[0]*p0.z+q0[1]*p1.z+q0[2]*p2.z+q1[0]*p3.z+q1[1]*p4.z;
+ float dw=t0[0]*x0.w+t0[1]*x1.w+t0[2]*x2.w+t1[0]*x3.w+t1[1]*x4.w+q0[0]*p0.w+q0[1]*p1.w+q0[2]*p2.w+q1[0]*p3.w+q1[1]*p4.w;
+ return vec4(dx,dy,dz,dw)*49.;}
+vec3 curl(vec3 p,float t,float persistence,int oct){vec4 xN=vec4(0),yN=vec4(0),zN=vec4(0);
+ for(int i=0;i<3;i++){if(i>=oct)break;float tp=pow(2.,float(i));float sc=.5*tp*pow(persistence,float(i));
+  xN+=snoise4(vec4(p*tp,t))*sc;yN+=snoise4(vec4((p+vec3(123.4,129845.6,-1239.1))*tp,t))*sc;zN+=snoise4(vec4((p+vec3(-9519.,9051.,-123.))*tp,t))*sc;}
+ return vec3(zN.y-yN.z,xN.z-zN.x,yN.x-xN.y);}
+`;
+const SIM=`#version 300 es
+precision highp float;precision highp sampler2D;
+uniform sampler2D uPos;uniform float uTime,uDelta,uSpeed,uCurlSize,uDieSpeed,uRadius,uCoh;uniform int uOct;
+out vec4 o;
+${SNOISE4}
+void main(){ivec2 ij=ivec2(gl_FragCoord.xy);vec2 uv=gl_FragCoord.xy/vec2(textureSize(uPos,0));
+ vec4 inf=texelFetch(uPos,ij,0);vec3 p=inf.xyz;float life=inf.w-uDieSpeed*uDelta;const vec3 A=vec3(0,30,0);
+ if(life<.01){float a1=fract(sin(dot(uv,vec2(12.9898,78.233))+uTime)*43758.5453),a2=fract(sin(dot(uv,vec2(39.346,11.135))+uTime)*22578.1459),a3=fract(sin(dot(uv,vec2(73.156,52.971))+uTime)*31415.9265);
+  float th=a1*6.28318,ph=acos(2.*a2-1.),r=pow(a3,.3333)*300.*uRadius;p=vec3(r*sin(ph)*cos(th),r*sin(ph)*sin(th),r*cos(ph))+A;life=.5+a1*.5;}
+ else{p+=curl(p*uCurlSize,uTime*.3,1.2+(1.-life)*.35,uOct)*uSpeed*uDelta;
+  vec3 toA=A-p;float da=length(toA);if(da>1.)p+=normalize(toA)*min(da*.0008*uCoh,.5*uCoh)*uDelta;}
+ o=vec4(p,life);}`;
+/* particles: read the sim by vertex id, apply the draw-time warps, streak along screen velocity */
+const PVS=`#version 300 es
+precision highp float;precision highp sampler2D;
+uniform sampler2D uPos,uPrev;uniform int uW;uniform mat4 uVP,uV;uniform vec2 uRes;
+uniform float uSize,uMotion,uMDist,uMaxPt,uPx,uFog,uHatSeed,uSwell;
+uniform vec3 uFwd,uOff,uOffP;uniform vec4 uShock;uniform vec2 uTw,uTrav;
+out float vLife,vMix,vBase,vPt,vFade,vHat;out vec2 vVel;
+const vec3 A=vec3(0,30,0);const float L=650.;
+float h1(float n){return fract(sin(n)*43758.5453);}
+vec3 warp(vec3 p,vec3 off,float R,float Am,float tw,float trav,out float s2){vec3 d=p-A;float r=length(d);
+ if(abs(tw)>1e-4){float ang=tw/(1.+r/140.);float c=cos(ang),s=sin(ang);d=d*c+cross(uFwd,d)*s+uFwd*dot(uFwd,d)*(1.-c);}
+ if(Am>.01&&r>.001){float k=(r-R)/45.;d+=d/r*Am*exp(-k*k);}
+ d+=off*(.35+.65*clamp(r/220.,0.,1.5));
+ float s=dot(d,uFwd);s2=mod(s-trav+L,2.*L)-L;d+=uFwd*(s2-s);
+ return A+d;}
+void main(){int id=gl_VertexID;ivec2 ij=ivec2(id%uW,id/uW);vec4 cur=texelFetch(uPos,ij,0),prv=texelFetch(uPrev,ij,0);
+ float sw,swp;vec3 p=warp(cur.xyz,uOff,uShock.x,uShock.y,uTw.x,uTrav.x,sw),pp=warp(prv.xyz,uOffP,uShock.z,uShock.w,uTw.y,uTrav.y,swp);
+ vec4 mv=uV*vec4(p,1.),clip=uVP*vec4(p,1.),clipP=uVP*vec4(pp,1.);
+ float life=cur.w;vLife=life;vMix=smoothstep(-200.,200.,p.y)*.7+life*.3;
+ float base=uSize*uSwell*smoothstep(0.,.15,life)*(300./max(-mv.z,1.))*(.8+.4*h1(float(id)*.37))*uPx;base=max(base,1.);
+ vec2 s0=clip.xy/max(clip.w,1e-4),s1=clipP.xy/max(clipP.w,1e-4);vec2 vel=(s0-s1)*.5*uRes*uMotion;
+ if(length(p-pp)>120.||length(cur.xyz-prv.xyz)>60.)vel=vec2(0);
+ float vl=length(vel);if(vl>uMDist)vel*=uMDist/vl;
+ vVel=vel;vBase=base*.5;float size=min(base+length(vel),uMaxPt);vPt=size;
+ vFade=smoothstep(L,L*.72,abs(sw))*exp(-max(-mv.z-500.,0.)*.0016*uFog);
+ vHat=step(.86,h1(float(id)*1.13+uHatSeed));
+ gl_PointSize=clip.w>10.?size:0.;gl_Position=clip;}`;
+const PFS=`#version 300 es
+precision highp float;
+uniform vec3 uC1,uC2;uniform float uSamples,uBright,uHat;
+in float vLife,vMix,vBase,vPt,vFade,vHat;in vec2 vVel;out vec4 o;
+void main(){vec2 q=(gl_PointCoord-.5)*vPt;q.y=-q.y;float a=0.;float vl=length(vVel);
+ if(vl<.75)a=smoothstep(vBase,vBase*.15,length(q));
+ else{for(int i=0;i<16;i++){if(float(i)>=uSamples)break;float f=(float(i)+.5)/uSamples-.5;a+=smoothstep(vBase,vBase*.15,length(q-vVel*f));}a/=uSamples;}
+ a*=smoothstep(0.,.2,vLife)*vFade;if(a<.004)discard;
+ vec3 col=mix(uC1,uC2,vMix)+.15*a;col*=uBright*(1.+uHat*vHat*2.5);
+ o=vec4(col*a*.9,1.);}`;
+const F={
+down:`uniform sampler2D uX;uniform vec2 uTx;void main(){vec2 d=uTx;o=.25*(texture(uX,uv+vec2(-d.x,-d.y))+texture(uX,uv+vec2(d.x,-d.y))+texture(uX,uv+vec2(-d.x,d.y))+texture(uX,uv+vec2(d.x,d.y)));}`,
+blur:`uniform sampler2D uX;uniform vec2 uDir;void main(){vec4 c=texture(uX,uv)*.227;
+ c+=(texture(uX,uv+uDir*1.385)+texture(uX,uv-uDir*1.385))*.316;c+=(texture(uX,uv+uDir*3.231)+texture(uX,uv-uDir*3.231))*.07;o=c;}`,
+comp:`uniform sampler2D uScene,uBloom,uT;uniform vec3 cBg,cT;uniform vec4 uTx;uniform float asp,uTon,uBloomAmt,uGrain,uFlash,uTime,uTop,uBlend;
+float tmask(vec2 u){vec2 l=(vec2(u.x*asp,u.y)-uTx.xy)/uTx.zw+.5;if(uTon<.5||l.x<0.||l.y<0.||l.x>1.||l.y>1.)return 0.;return texture(uT,l).r;}
+void main(){vec3 s=texture(uScene,uv).rgb,b=texture(uBloom,uv).rgb;
+ vec3 col=cBg+(s+b*uBloomAmt)*(1.+uFlash);
+ col=mix(col,1.-exp(-col),smoothstep(.6,1.8,col));
+ col+=(hash(gl_FragCoord.xy*.7+fract(uTime)*91.)-.5)*uGrain*.18;
+ vec2 q=uv-.5;col*=smoothstep(0.,1.,1.-dot(q,q)*1.2);
+ float tm=tmask(uv)*uTop;vec3 bl=cT;
+ if(uBlend>4.5)bl=abs(col-cT);else if(uBlend>3.5)bl=mix(2.*col*cT,1.-2.*(1.-col)*(1.-cT),step(.5,col));else if(uBlend>2.5)bl=col*cT;else if(uBlend>1.5)bl=1.-(1.-col)*(1.-cT);else if(uBlend>.5)bl=min(col+cT,1.);
+ o=vec4(mix(col,bl,tm),1);}`
+};
+function compile(vs,fs){const p=gl.createProgram();for(const[t,s]of[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh);}
+ gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+ const u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);u[a.name.replace('[0]','')]={l:gl.getUniformLocation(p,a.name),t:a.type};}return{p,u};}
+const PR={sim:compile(VS,SIM),pts:compile(PVS,PFS)};for(const k in F)PR[k]=compile(VS,FHEAD+F[k]);
+function set(pr,un){let unit=0;for(const k in un){const e=pr.u[k];if(!e)continue;const v=un[k],l=e.l;
+  if(v instanceof WebGLTexture){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,v);gl.uniform1i(l,unit++);}
+  else if(e.t===gl.INT)gl.uniform1i(l,v);else if(e.t===gl.FLOAT_MAT4)gl.uniformMatrix4fv(l,false,v);
+  else if(typeof v==='number')gl.uniform1f(l,v);else if(v.length===2)gl.uniform2f(l,v[0],v[1]);else if(v.length===3)gl.uniform3f(l,v[0],v[1],v[2]);else gl.uniform4f(l,v[0],v[1],v[2],v[3]);}}
+function pass(pr,target,w,h,un){gl.useProgram(pr.p);set(pr,un);gl.bindFramebuffer(gl.FRAMEBUFFER,target?target.fb:null);gl.viewport(0,0,w,h);gl.drawArrays(gl.TRIANGLES,0,3);}
+function tgt(w,h,fmt,type,filter,data){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,fmt,w,h,0,gl.RGBA,type,data||null);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filter);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filter);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,fb,w,h};}
+const kill=x=>{if(x){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb);}};
+const VAO=gl.createVertexArray();gl.bindVertexArray(VAO);
+const MAXPT=Math.min(gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1],1024);
+
+/* quality: particle count, streak samples, render scale, noise octaves */
+const QS=[{w:64,h:64,samp:4,scale:.6,oct:2},{w:128,h:128,samp:8,scale:.8,oct:3},{w:256,h:128,samp:16,scale:1,oct:3}];
+let simA,simB,simW=0,simH=0,scene,bA,bB,RW=0,RH=0,ASP=1;
+function seedSim(){const q=QS[S.q];const n=q.w*q.h,d=new Float32Array(n*4);
+ for(let i=0;i<n;i++){const r=Math.random()*300*S.radius,ph=Math.acos(2*Math.random()-1),th=Math.random()*Math.PI*2;
+  d[i*4]=r*Math.sin(ph)*Math.cos(th);d[i*4+1]=r*Math.sin(ph)*Math.sin(th)+30;d[i*4+2]=r*Math.cos(ph);d[i*4+3]=Math.random();}
+ kill(simA);kill(simB);const f=SIM32?gl.RGBA32F:gl.RGBA16F;
+ simA=tgt(q.w,q.h,f,gl.FLOAT,gl.NEAREST,d);simB=tgt(q.w,q.h,f,gl.FLOAT,gl.NEAREST,d);simW=q.w;simH=q.h;
+ $('rSim').textContent=(n>=1000?Math.round(n/1024)+'K':n)+(SIM32?'':' LO');}
+function resize(){const q=QS[S.q];const dpr=Math.min(window.devicePixelRatio||1,2)*q.scale;
+ const w=Math.max(2,Math.round(cv.clientWidth*dpr)),h=Math.max(2,Math.round(cv.clientHeight*dpr));
+ if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+ if(q.w!==simW||q.h!==simH)seedSim();
+ if(w!==RW||h!==RH){[scene,bA,bB].forEach(kill);RW=w;RH=h;ASP=w/h;
+  scene=tgt(w,h,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);const bw=Math.max(1,w>>2),bh=Math.max(1,h>>2);
+  bA=tgt(bw,bh,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);bB=tgt(bw,bh,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);tpos=[ASP*.5,.5];}}
+
+/* ---------- tiny matrix kit ---------- */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l];},dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function lookAt(eye,tg){const f=norm(sub(tg,eye)),r=norm(cross(f,[0,1,0])),u=cross(r,f);
+ return{m:new Float32Array([r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-dot(r,eye),-dot(u,eye),dot(f,eye),1]),f,r,u};}
+function persp(fov,a,n,fa){const t=1/Math.tan(fov/2);return new Float32Array([t/a,0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0]);}
+function mul(a,b){const o=new Float32Array(16);for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+j]*b[i*4+k];o[i*4+j]=s;}return o;}
+/* ---------- text layer ---------- */
+const tc=document.createElement('canvas');tc.width=2048;tc.height=512;const tx2=tc.getContext('2d');
+const textTex=gl.createTexture();let tHalf=[.5,.18],tpos=[1,.5],tvel=[.11,.07];
+function drawText(){tx2.fillStyle='#000';tx2.fillRect(0,0,2048,512);tx2.fillStyle='#fff';tx2.textAlign='center';tx2.textBaseline='middle';
+ let f=FONTS[S.font]||FONTS.POSTER;tx2.font=f;const str=(S.str||' ').toUpperCase();let mw=tx2.measureText(str).width;
+ if(mw>1960){const px0=parseFloat(f.match(/(\d+)px/)[1]);f=f.replace(/\d+px/,Math.floor(px0*1960/mw)+'px');tx2.font=f;mw=1960;}
+ tx2.fillText(str,1024,270);tHalf=[mw/2048*2,.36];
+ gl.bindTexture(gl.TEXTURE_2D,textTex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,tc);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+ gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);}
+drawText();if(document.fonts&&document.fonts.load)Promise.all(Object.values(FONTS).map(f=>document.fonts.load(f.replace(/\d+px/,'40px')))).then(drawText).catch(()=>{});
+
+/* ---------- audio feature bus: every source ends in emit(kind,strength) + band levels ---------- */
+const lvl=[0,0,0];let flash=0;
+const fx={shR:0,shA:0,shRp:0,shAp:0,tw:0,twV:0,twSign:1,twP:0,hat:0,hatSeed:0};
+function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=>el.classList.remove('on'),70);
+ if(kind===0){if(S.kick<=0)return;fx.shR=20;fx.shA=Math.max(fx.shA*.5,s*S.burst*70*(.4+S.kick));flash=Math.max(flash,s*S.flash);}
+ else if(kind===1){if(S.snare<=0)return;fx.twSign=-fx.twSign;fx.twV+=fx.twSign*s*S.snare*S.burst*2.6;}
+ else{if(S.hat<=0)return;fx.hat=Math.min(1,fx.hat+s*S.hat);fx.hatSeed=Math.random()*100;}}
+let ac,an,fd,out,srcNode,micStream,noiseBuf;
+function audio(){if(ac){ac.resume();return ac;}ac=new (window.AudioContext||window.webkitAudioContext)();an=ac.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0;fd=new Uint8Array(512);
+ out=ac.createGain();an.connect(out);out.connect(ac.destination);noiseBuf=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return ac;}
+function hitSound(kind,t){const g=ac.createGain();g.connect(an);
+ if(kind===0){const o=ac.createOscillator();o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(42,t+.11);g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.001,t+.28);o.connect(g);o.start(t);o.stop(t+.3);}
+ else{const n=ac.createBufferSource();n.buffer=noiseBuf;const f=ac.createBiquadFilter();f.type=kind===1?'bandpass':'highpass';f.frequency.value=kind===1?1800:7000;
+  g.gain.setValueAtTime(kind===1?.7:.22,t);g.gain.exponentialRampToValueAtTime(.001,t+(kind===1?.14:.035));n.connect(f);f.connect(g);n.start(t);n.stop(t+.2);}}
+const PAT={0:[0,10],1:[4,12],2:[0,2,3,6,8,9,11,14,15]};let step=0,nextT=0;
+function seq(){if(S.src!=='demo')return;const live=S.sound&&ac&&ac.state==='running';const now=live?ac.currentTime:performance.now()/1000;
+ if(nextT<now-.3||nextT>now+1)nextT=now;
+ while(nextT<now+(live?.06:0)){for(const k of[0,1,2])if(PAT[k].includes(step)){if(live)hitSound(k,nextT);else{emit(k,k===2?.5:.9);lvl[k]=1;}}
+  step=(step+1)%16;nextT+=15/S.bpm;}}
+const BD=[[1,3,.09],[5,40,.09],[70,300,.045]].map(b=>({lo:b[0],hi:b[1],refr:b[2],pk:1e-3,prev:0,avg:0,last:0}));
+function analyse(t){if(NATIVE&&(S.src==='phone'||S.src==='capture')){nativeRead(t);return;}
+ const live=ac&&ac.state==='running'&&(S.src!=='demo'||S.sound);
+ if(!live){for(let i=0;i<3;i++)lvl[i]*=.88;return;}
+ an.getByteFrequencyData(fd);
+ bands(BD.map(b=>{let e=0;for(let k=b.lo;k<=b.hi;k++){const v=fd[k]/255;e+=v*v;}return e/(b.hi-b.lo+1);}),t,1e-3);}
+/* native bridge: the Android shell measures the same three bands and hands over peak-held energies */
+let nSeq=-1,nMax=0,nStart=0,nWarned=false,nHzT=0;
+function nativeRead(t){let r;try{r=String(NATIVE.read()).split(',');}catch(e){return;}
+ if(t-nHzT>.5){nHzT=t;$('rIn').textContent=(S.src==='phone'?'PHONE ':'CAPTURE ')+Math.round(+r[4]||0)+'HZ';}
+ if(!nWarned&&nStart>0&&t-nStart>6&&nMax<1e-9){nWarned=true;note(S.src==='capture'?'Capture is running but hearing silence. The playing app may block capture. Try Phone audio.':'No sound detected yet. Start music in Spotify or any other app.',1);}
+ const sq=+r[0];if(sq===nSeq){for(let i=0;i<3;i++)lvl[i]*=.94;return;}
+ nSeq=sq;const e=[+r[1]||0,+r[2]||0,+r[3]||0];nMax=Math.max(nMax,e[0],e[1],e[2]);
+ if(nWarned&&nMax>1e-9){nWarned=false;note('Hearing audio.');}bands(e,t,1e-7);}
+window.__slickStatus=(route,state,msg)=>{const s=route==='vis'?'phone':'capture';
+ if(state==='running'){stopSrc();nSeq=-1;nMax=0;nWarned=false;nStart=performance.now()/1000;BD.forEach(b=>{b.pk=1e-7;b.prev=0;b.avg=0;});setSrc(s,msg);}
+ else if(state==='error'){if(S.src===s)setSrc('demo');note(msg,1);}
+ else note(msg);};
+function bands(E,t,floor){const sens=[S.kick,S.snare,S.hat];
+ BD.forEach((b,i)=>{const e=E[i];
+  b.pk=Math.max(e,b.pk*.9995,floor);const n=e/b.pk,flux=Math.max(0,n-b.prev);b.prev=n;b.avg+=(flux-b.avg)*.06;
+  lvl[i]+=(n-lvl[i])*(n>lvl[i]?.6:.1);
+  if(flux>(1.05-sens[i])*.45+b.avg*1.4&&t-b.last>b.refr){b.last=t;emit(i,Math.min(1,.35+flux*1.6));}});}
+function stopSrc(){if(srcNode){try{srcNode.stop&&srcNode.stop();}catch(e){}srcNode.disconnect();srcNode=null;}if(micStream){micStream.getTracks().forEach(x=>x.stop());micStream=null;}}
+function setSrc(s,msg){S.src=s;$('rIn').textContent=s.toUpperCase();if(out)out.gain.value=s==='mic'?0:1;note(msg||'');paint();}
+async function useMic(){try{audio();const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});stopSrc();micStream=st;srcNode=ac.createMediaStreamSource(st);srcNode.connect(an);setSrc('mic','Listening through the microphone.');}
+ catch(e){note(NATIVE?'The microphone was blocked. Allow microphone access for the app and try again.':'The microphone is blocked on this page. It works when the file is served from your own https domain.',1);}}
+async function useFile(file){if(!file)return;try{audio();note('Decoding '+file.name+' ...');const buf=await ac.decodeAudioData(await file.arrayBuffer());stopSrc();srcNode=ac.createBufferSource();srcNode.buffer=buf;srcNode.loop=true;srcNode.connect(an);srcNode.start();setSrc('track','Playing '+file.name);}
+ catch(e){note('That file could not be decoded. Try an MP3, WAV, or M4A.',1);}}
+
+/* ---------- motion: gyro turns the view, g-forces shove the cloud, road vibration drives the warp ---------- */
+const mot={g:[0,0,0],acc:[0,0,0],rot:[0,0,0],hasLin:false,gyro:false,seen:false,lp:[0,0,0],vib:0,energy:0};
+let gBase=[0,0],tiltSeen=false;
+addEventListener('devicemotion',e=>{const th=((screen.orientation&&screen.orientation.angle)||0)*Math.PI/180,c=Math.cos(th),s=Math.sin(th);
+ const R=(x,y)=>[x*c+y*s,-x*s+y*c];
+ const ag=e.accelerationIncludingGravity;if(ag&&ag.x!=null){const[x,y]=R(ag.x,ag.y);mot.g=[x/9.8,y/9.8,(ag.z||0)/9.8];
+  if(!tiltSeen&&Math.abs(ag.x)+Math.abs(ag.y)>.2){tiltSeen=true;}}
+ const a=e.acceleration;let lin=null;
+ if(a&&a.x!=null){const[x,y]=R(a.x,a.y);lin=[x,y,a.z||0];mot.hasLin=true;}
+ else if(ag&&ag.x!=null){for(let i=0;i<3;i++)mot.lp[i]+=(mot.g[i]-mot.lp[i])*.05;lin=[0,1,2].map(i=>(mot.g[i]-mot.lp[i])*9.8);}
+ if(lin){mot.acc=lin;
+  /* road rumble: high-passed acceleration energy rises with speed on most roads */
+  const m=Math.hypot(lin[0],lin[1],lin[2]);mot.vib+=(m-mot.vib)*.25;mot.energy+=(Math.abs(m-mot.vib)-mot.energy)*.02;}
+ const r=e.rotationRate;if(r&&r.alpha!=null){const[rx,ry]=R(r.beta||0,r.gamma||0);mot.rot=[rx,ry,r.alpha||0];
+  if(!mot.gyro&&Math.abs(rx)+Math.abs(ry)+Math.abs(r.alpha)>.05){mot.gyro=true;$('rTilt').textContent='LIVE';}}});
+const ptr={on:false,x:0,y:0,vx:0,vy:0,sx:0,sy:0,t0:0,moved:0};
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.on=true;ptr.x=e.clientX;ptr.y=e.clientY;ptr.vx=ptr.vy=0;ptr.sx=e.clientX;ptr.sy=e.clientY;ptr.t0=performance.now();ptr.moved=0;});
+cv.addEventListener('pointermove',e=>{if(!ptr.on)return;const dx=e.clientX-ptr.x,dy=e.clientY-ptr.y;ptr.x=e.clientX;ptr.y=e.clientY;
+ cam.yawV-=dx*.006;cam.pitchV+=dy*.004;ptr.moved=Math.max(ptr.moved,Math.hypot(e.clientX-ptr.sx,e.clientY-ptr.sy));});
+const up=()=>{if(!ptr.on)return;ptr.on=false;if(ptr.moved<8&&performance.now()-ptr.t0<350)$('hud').hidden=!$('hud').hidden;};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{ptr.on=false;});
+
+/* ---------- HUD, generated from the manifest ---------- */
+const TABS=['source','react','field','motion','look','text'];
+const hexs=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
+function note(m,warn){S._note=m;S._warn=!!warn;const n=$('note');if(n){n.textContent=m;n.className='note'+(warn?' warn':'');}}
+function paint(){document.documentElement.style.setProperty('--volt',S.cA);
+ $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
+ const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
+ let h='';
+ if(S.tab==='source'){if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper']],'Scene');
+  h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
+  h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
+  h+=`<p class="note${S._warn?' warn':''}" id="note">${S._note||(NATIVE?'Phone audio hears whatever is playing, Spotify included. Capture is the full-quality route: Android asks each session, choose Entire screen.':'The demo beat plays a 174 BPM jungle pattern. Set it audible to route it through the real hit detection. Drag the field to orbit it.')}</p>`;
+  h+=seg('q',[[0,'Lite 4K'],[1,'Mid 16K'],[2,'Max 32K']],'Particles');
+  h+=`<div class="seg">${NATIVE?'':'<button id="fs">Fullscreen</button>'}<button id="reset">Reset controls</button></div><input type="file" id="file" accept="audio/*" hidden>`;
+  h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
+ if(S.tab==='motion'){h+=`<p class="note">Turning the phone (or the car it's mounted in) spins the field through the turn, then it eases back. Braking and accelerating shove the cloud. Road vibration drives the warp; Cruise adds a steady warp for when you're parked.</p>`;
+  h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
+ if(S.tab==='look'){h+=`<div class="grp"><span class="lab">Palette</span><div class="seg">${Object.keys(PAL).map(k=>`<button data-pal="${k}">${k}</button>`).join('')}</div>
+  <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="First color"><input type="color" id="cB" value="${S.cB}" aria-label="Second color"><input type="color" id="cBg" value="${S.cBg}" aria-label="Background"><span class="lab">Color / color / background</span></div></div>`;}
+ if(S.tab==='text'){h+=seg('ton',[[true,'On'],[false,'Off']],'Text layer');
+  h+=seg('tmode',[['float','Float'],['tether','Tethered'],['pinned','Pinned']],'Behavior');
+  h+=`<div class="grp"><label class="lab" for="str">Words</label><input type="text" id="str" maxlength="28" value="${S.str.replace(/"/g,'&quot;')}"></div>`;
+  h+=seg('font',Object.keys(FONTS).map(k=>[k,k]),'Typeface');h+=seg('blend',BLENDS.map(b=>[b,b]),'Blend');
+  h+=`<div class="cols"><input type="color" id="cT" value="${S.cT}" aria-label="Text color"><span class="lab">Text color</span></div>`;}
+ for(const p of P)if(p[2]===S.tab)h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
+ $('body').innerHTML=h;}
+const fmt=(p,v)=>p[6]===1?String(Math.round(v)):Math.round((v-p[3])/(p[4]-p[3])*100)+'';
+$('tabs').addEventListener('click',e=>{const t=e.target.dataset.tab;if(t){S.tab=t;save();paint();}});
+$('body').addEventListener('input',e=>{const el=e.target;
+ if(el.dataset.p){const p=P.find(x=>x[0]===el.dataset.p);S[p[0]]=parseFloat(el.value);$('o_'+p[0]).textContent=fmt(p,S[p[0]]);}
+ else if(el.type==='color'){S[el.id]=el.value;if(el.id==='cA')document.documentElement.style.setProperty('--volt',S.cA);}
+ else if(el.id==='str'){S.str=el.value;drawText();}
+ save();});
+$('body').addEventListener('change',e=>{if(e.target.id==='file')useFile(e.target.files[0]);});
+$('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!el)return;
+ if(el.dataset.pal){[S.cA,S.cB,S.cBg]=PAL[el.dataset.pal];}
+ else if(el.id==='fs'){const d=document.documentElement;(document.fullscreenElement?document.exitFullscreen():d.requestFullscreen&&d.requestFullscreen()||Promise.reject()).catch(()=>note('Fullscreen is not available in this view.',1));return;}
+ else if(el.id==='reset'){for(const p of P)S[p[0]]=p[5];}
+ else if(el.id==='copyset'){
+  const code='HYP1.'+btoa(unescape(encodeURIComponent(JSON.stringify(lookOf()))));$('code').value=code;
+  Promise.resolve().then(()=>navigator.clipboard.writeText(code)).then(()=>note('Settings copied. Paste the code into Hyper on your other device.'),()=>{$('code').select();note('Select and copy the code in the box.');});return;}
+ else if(el.id==='applyset'){try{const raw=$('code').value.trim();if(!raw.startsWith('HYP1.'))throw 0;applyLook(JSON.parse(decodeURIComponent(escape(atob(raw.slice(5))))));note('Look loaded.');}catch(x){note('That code could not be read. Hyper codes start with HYP1.',1);}return;}
+ else if(el.dataset.set){const k=el.dataset.set;let v=el.dataset.val;
+  if(k==='scene'){if(v==='slick'){try{localStorage.setItem('slickScene','slick');}catch(x){}location.replace('index.html');}return;}
+  if(k==='src'){if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
+   if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
+  if(k==='sound'){S.sound=v==='true';if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}
+  else if(k==='ton')S.ton=v==='true';else if(k==='tinv')S.tinv=v==='true';
+  else if(k==='tmode'){S.tmode=v;if(v==='float'){const L=Math.hypot(tvel[0],tvel[1]);tvel=L>.01?[tvel[0]/L*.13,tvel[1]/L*.13]:[.11,.07];}}else if(k==='q'){S.q=+v;resize();}else{S[k]=v;if(k==='font')drawText();}}
+ else return;
+ save();paint();});
+paint();
+/* ---------- looks: one serializer for codes and presets ---------- */
+function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
+function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
+ for(const k of['cA','cB','cBg','cT'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
+ for(const k of['str','font','blend','tmode'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['ton','tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
+ if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
+ drawText();save();paint();}
+let presets=[null,null,null];try{const v=JSON.parse(localStorage.getItem('hyper01p')||'null');if(Array.isArray(v))presets=v.slice(0,3);}catch(e){}
+const savePresets=()=>{try{localStorage.setItem('hyper01p',JSON.stringify(presets));}catch(e){}};
+function paintSlots(){document.querySelectorAll('.slot').forEach(b=>{const p=presets[+b.dataset.slot],sw=b.querySelector('.sw');
+ sw.style.background=p?p.cA:'transparent';sw.style.borderColor=p?p.cA:'';b.title=p?'Tap to load, hold to overwrite':'Tap to save the current look';});}
+let toastT=0;function toast(m){const el=$('toast');el.textContent=m;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,1600);}
+/* hold gesture: a fill sweeps across the button; let go early and it counts as a tap */
+function holdable(el,ms,onHold,onTap){let tm=0,raf=0,done=false,active=false;
+ const reset=()=>{active=false;clearTimeout(tm);cancelAnimationFrame(raf);el.style.setProperty('--p',0);};
+ el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(x){}done=false;active=true;const t0=performance.now();
+  const step=()=>{if(!active)return;el.style.setProperty('--p',Math.min(1,(performance.now()-t0)/ms));raf=requestAnimationFrame(step);};step();
+  tm=setTimeout(()=>{done=true;reset();onHold();},ms);});
+ el.addEventListener('pointerup',()=>{const tap=active&&!done;reset();if(tap&&onTap)onTap();});
+ el.addEventListener('pointercancel',reset);el.addEventListener('contextmenu',e=>e.preventDefault());
+ el.addEventListener('click',e=>{if(e.detail===0)(onTap||onHold)();});}
+document.querySelectorAll('.slot').forEach(b=>{const i=+b.dataset.slot;
+ const store=()=>{presets[i]=lookOf();savePresets();paintSlots();toast('Saved to preset '+(i+1));};
+ holdable(b,600,store,()=>{if(presets[i]){applyLook(presets[i]);toast('Preset '+(i+1));}else store();});});
+paintSlots();
+const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
+function randomize(){
+ /* the field, its reactions and its look; text, audio source and motion response stay as they are */
+ const keep=new Set(['bpm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright']);
+ for(const p of P){if(keep.has(p[0])||p[6]===1)continue;const r=.1+.8*Math.random();S[p[0]]=+(p[3]+(p[4]-p[3])*r).toFixed(5);}
+ S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
+ S.curl=+(.0004+Math.random()*.0016).toFixed(5);S.psize=3+Math.random()*7;S.die=Math.random()<.4?0:+(Math.random()*.008).toFixed(4);
+ const h=Math.random()*360,sch=[[150,0],[100,0],[180,0],[60,0],[200,0]][Math.random()*5|0];
+ S.cA=hsl(h,100,58);S.cB=hsl(h+sch[0],100,55);S.cBg=hsl(h+200,35,6+Math.random()*5);
+ save();paint();toast('Randomized');}
+holdable($('rand'),600,randomize,()=>toast('Hold to randomize'));
+
+/* ---------- in-app rotation lock (native only; ignores the phone's own lock) ---------- */
+const rl=$('rlock');
+function paintLock(){rl.setAttribute('aria-pressed',S.rlock?'true':'false');rl.querySelector('span').textContent=S.rlock?'Locked':'Auto';
+ rl.querySelector('#shackle').setAttribute('d',S.rlock?'M4 5.5V4a2 2 0 0 1 4 0v1.5':'M4 5.5V4a2 2 0 0 1 4 0');}
+if(NATIVE&&NATIVE.setOrientation){rl.hidden=false;paintLock();try{NATIVE.setOrientation(S.rlock||'auto');}catch(e){}
+ rl.addEventListener('click',()=>{try{if(S.rlock){S.rlock='';NATIVE.setOrientation('auto');toast('Rotation unlocked');}
+  else{S.rlock=String(NATIVE.currentOrientation());NATIVE.setOrientation(S.rlock);toast('Rotation locked');}}catch(e){}save();paintLock();});}
+/* keep a capture session alive across scene switches; otherwise start phone audio */
+if(NATIVE)setTimeout(()=>{let route='';try{route=String(NATIVE.read()).split(',')[5]||'';}catch(e){}
+ if(route==='capture')window.__slickStatus('cap','running','Capturing phone audio at full quality.');else{note('Starting phone audio...');NATIVE.start('vis');}},400);
+if(!SIM32)note('This GPU only offers half-precision float targets, so motion may look slightly stepped.',1);
+
+/* ---------- frame loop ---------- */
+const cam={orbit:0,yaw:0,pitch:0,yawV:0,pitchV:0};
+const inert={o:[0,0,0],v:[0,0,0]};let offPrev=[0,0,0];
+const wrp={trav:0,travP:0,speed:0};const SPAN=1300;
+let last=performance.now()/1000,fpsS=60,fpsT=0,moveT=0;
+try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
+addEventListener('resize',resize);resize();
+function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.min(.05,Math.max(.001,t-last));last=t;
+ fpsS+=(1/fdt-fpsS)*.05;if(t-fpsT>.5){fpsT=t;$('rFps').textContent=Math.round(fpsS);}
+ if(cv.clientWidth*cv.clientHeight===0)return;resize();
+ seq();analyse(t);flash*=Math.pow(.02,fdt);
+ const sg=S.tinv?-1:1,D2R=Math.PI/180;
+
+ /* look-around: gyro rates spin the view through a turn, then it eases back to center */
+ if(mot.gyro){cam.yawV+=-mot.rot[1]*D2R*S.look*sg*fdt*1.2;cam.pitchV+=-mot.rot[0]*D2R*S.look*sg*fdt*.8;}
+ const gr=tiltSeen?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];
+ for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
+ const tilt=[(gr[0]-gBase[0])*S.tiltp,(gr[1]-gBase[1])*S.tiltp];
+ cam.yaw+=cam.yawV;cam.pitch+=cam.pitchV;cam.yawV=0;cam.pitchV=0;
+ cam.yaw*=Math.exp(-fdt*.35);cam.pitch*=Math.exp(-fdt*.6);cam.pitch=Math.max(-1.1,Math.min(1.1,cam.pitch));
+ cam.orbit+=S.orbit*fdt*.09;
+ const yaw=cam.orbit+cam.yaw+tilt[0]*.9,pitch=.08+Math.sin(t*.15)*.05+cam.pitch-tilt[1]*.7;
+ const T=[0,30,0],RAD=620,eye=[T[0]+RAD*Math.sin(yaw)*Math.cos(pitch),T[1]+RAD*Math.sin(pitch),T[2]+RAD*Math.cos(yaw)*Math.cos(pitch)];
+ const V=lookAt(eye,T),Pm=persp(45*D2R,ASP,10,5000),VP=mul(Pm,V.m);
+
+ /* inertia: g-forces shove the cloud on a spring; braking surges it forward, turns slosh it sideways */
+ const a=mot.acc,k=10,c=4,gain=220*S.inertia*sg;
+ for(let i=0;i<3;i++){inert.v[i]+=(-k*inert.o[i]-c*inert.v[i]-a[i]*gain)*fdt;inert.o[i]+=inert.v[i]*fdt;inert.o[i]=Math.max(-240,Math.min(240,inert.o[i]));}
+ const o=inert.o,off=[0,1,2].map(i=>V.r[i]*o[0]+V.u[i]*o[1]-V.f[i]*o[2]);
+
+ /* warp: road vibration (plus Cruise) streams the field toward you; it coasts to a full wrap so the cloud re-forms */
+ const road=Math.max(0,(mot.energy-.08)*2.2)*S.warp;
+ const target=Math.min(1.6,road+S.cruise);wrp.speed+=(target-wrp.speed)*Math.min(1,fdt*1.5);
+ if(wrp.trav>SPAN*1000){wrp.trav%=SPAN;}
+ wrp.travP=wrp.trav;let v=wrp.speed*700;const rem=wrp.trav%SPAN;
+ if(target<.02&&rem>.5){v=Math.max(v,240);const next=wrp.trav-rem+SPAN;
+  if(wrp.trav+v*fdt>=next){wrp.trav=next;v=0;}}
+ wrp.trav+=v*fdt;
+ if(t-moveT>.25){moveT=t;$('rMove').textContent=(mot.energy).toFixed(2);}
+
+ /* music: shockwave shell, twist, sparkle */
+ fx.shRp=fx.shR;fx.shAp=fx.shA;fx.shR+=650*fdt;fx.shA*=Math.exp(-fdt*2.4);
+ fx.twP=fx.tw;fx.twV+=(-fx.tw*6-fx.twV*3.2)*fdt;fx.tw+=fx.twV*fdt;fx.tw+=mot.rot[2]*D2R*fdt*.6*S.look*sg;
+ fx.hat*=Math.exp(-fdt*10);
+
+ /* text overlay motion */
+ const th=S.tsize,tw=th*4,hx=tHalf[0]*th,hy=tHalf[1]*th,sp=S.tdrift*.5;
+ if(S.ton&&S.tmode==='pinned')tpos=[ASP/2,.5];
+ else if(S.ton&&S.tmode==='tether'){const kk=2.5+14*(1-S.tdrift),cx=ASP/2;
+  const ax=-kk*(tpos[0]-cx)-2.4*tvel[0]+gr[0]*2.2+o[0]*.004,ay=-kk*(tpos[1]-.5)-2.4*tvel[1]+gr[1]*2.2+o[1]*.004;
+  tvel[0]+=ax*fdt;tvel[1]+=ay*fdt;tpos[0]+=tvel[0]*fdt;tpos[1]+=tvel[1]*fdt;
+  if(ASP>2*hx){if(tpos[0]<hx){tpos[0]=hx;tvel[0]=Math.abs(tvel[0])*.4;}if(tpos[0]>ASP-hx){tpos[0]=ASP-hx;tvel[0]=-Math.abs(tvel[0])*.4;}}else tpos[0]=cx;
+  if(tpos[1]<hy){tpos[1]=hy;tvel[1]=Math.abs(tvel[1])*.4;}if(tpos[1]>1-hy){tpos[1]=1-hy;tvel[1]=-Math.abs(tvel[1])*.4;}}
+ else if(S.ton){const vx=tvel[0]*sp/.13,vy=tvel[1]*sp/.13;tpos[0]+=vx*fdt;tpos[1]+=vy*fdt;
+  if(tpos[0]<hx&&ASP>2*hx){tpos[0]=hx;tvel[0]=Math.abs(tvel[0]);}if(tpos[0]>ASP-hx&&ASP>2*hx){tpos[0]=ASP-hx;tvel[0]=-Math.abs(tvel[0]);}
+  if(ASP<=2*hx)tpos[0]=ASP/2;
+  if(tpos[1]<hy){tpos[1]=hy;tvel[1]=Math.abs(tvel[1]);}if(tpos[1]>1-hy){tpos[1]=1-hy;tvel[1]=-Math.abs(tvel[1]);}}
+
+ /* simulate */
+ const q=QS[S.q],dt60=Math.min(3,fdt*60),swell=1+lvl[0]*S.pump*.6;
+ gl.disable(gl.BLEND);
+ pass(PR.sim,simB,simW,simH,{uPos:simA.t,uTime:t,uDelta:dt60,uSpeed:S.speed*(1+lvl[0]*S.pump),uCurlSize:S.curl,uDieSpeed:S.die,uRadius:S.radius,uCoh:S.coh,uOct:q.oct});
+ const prev=simA;simA=simB;simB=prev;
+
+ /* draw particles additively into the HDR scene buffer */
+ gl.bindFramebuffer(gl.FRAMEBUFFER,scene.fb);gl.viewport(0,0,RW,RH);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+ gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PR.pts.p);
+ set(PR.pts,{uPos:simA.t,uPrev:simB.t,uW:simW,uVP:VP,uV:V.m,uRes:[RW,RH],uSize:S.psize,uMotion:S.mblur>0?S.mblur:0,uMDist:S.mdist*(RH/900),uMaxPt:MAXPT,
+  uPx:Math.min(RW,RH)/820,uFog:S.fog,uHatSeed:fx.hatSeed,uSwell:swell,uFwd:V.f,uOff:off,uOffP:offPrev,uShock:[fx.shR,fx.shA,fx.shRp,fx.shAp],uTw:[fx.tw,fx.twP],uTrav:[wrp.trav%SPAN,wrp.travP%SPAN],
+  uC1:hexs(S.cA),uC2:hexs(S.cB),uSamples:q.samp,uBright:S.bright*(1+flash*1.2),uHat:fx.hat});
+ gl.drawArrays(gl.POINTS,0,simW*simH);gl.disable(gl.BLEND);offPrev=off;
+
+ /* bloom at quarter resolution */
+ const bl=S.bloom>.01;
+ if(bl){pass(PR.down,bA,bA.w,bA.h,{uX:scene.t,uTx:[1/RW,1/RH]});
+  for(let i=0;i<2;i++){const r=S.bloomR*(1+i);pass(PR.blur,bB,bB.w,bB.h,{uX:bA.t,uDir:[r/bA.w,0]});pass(PR.blur,bA,bA.w,bA.h,{uX:bB.t,uDir:[0,r/bA.h]});}}
+ pass(PR.comp,null,cv.width,cv.height,{uScene:scene.t,uBloom:bA.t,uT:textTex,cBg:hexs(S.cBg),cT:hexs(S.cT),uTx:[tpos[0],tpos[1],tw,th],asp:ASP,uTon:S.ton?1:0,
+  uBloomAmt:bl?S.bloom:0,uGrain:S.grain,uFlash:flash*.3,uTime:t,uTop:S.topac,uBlend:BLENDS.indexOf(S.blend)});}
+requestAnimationFrame(frame);
+})();
+</script></body></html>

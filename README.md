@@ -2,9 +2,9 @@
 
 Android shell for the Slick audio-reactive liquid visualizer.
 
-- `web/slick.html` is the scene source (WebGL2), the same file as the web preview.
-- `app/src/main/assets/index.html` is generated from it. Regenerate it from the web
-  version with `tools/sync-scene.sh web/slick.html`.
+- `web/slick.html` (Slick, liquid) and `web/hyper.html` (Hyper, particles) are the scene sources (WebGL2).
+  Switch scenes in the Source tab; the app remembers the last one.
+- `app/src/main/assets/index.html` is generated from it. Regenerate the app pages with `tools/sync-scene.sh`.
 - `AudioEngine.kt` holds the two native audio routes and the band contract the scene reads:
   - **Phone audio**: Android's Visualizer on the global output mix. No consent dialog.
   - **Capture**: playback capture through a foreground service. Full-quality PCM, asks each session.
