@@ -477,7 +477,7 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const sg=S.tinv?-1:1,D2R=Math.PI/180;
 
  /* look-around: gyro rates spin the view through a turn, then it eases back to center */
- if(mot.gyro){cam.yawV+=-mot.rot[1]*D2R*S.look*sg*fdt*1.2;cam.pitchV+=-mot.rot[0]*D2R*S.look*sg*fdt*.8;}
+ if(mot.gyro){cam.yawV+=-mot.rot[0]*D2R*S.look*sg*fdt*1.2;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.8;}
  const gr=tiltSeen?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];
  for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
  const tilt=[(gr[0]-gBase[0])*S.tiltp,(gr[1]-gBase[1])*S.tiltp];
