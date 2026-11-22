@@ -110,16 +110,17 @@ const P=[
  ['speed','Flow speed','field',.01,.3,.08,.005],['curl','Curl scale','field',.0003,.003,.0012,.0001],['radius','Spread','field',.1,1.2,.65],
  ['die','Respawn','field',0,.02,.004,.0005],['coh','Cohesion','field',0,3,1],['orbit','Auto orbit','field',0,1,.3],
  ['look','Look-around','motion',0,2,1],['inertia','Inertia','motion',0,2,1],['warp','Road warp','motion',0,2,1],
- ['cruise','Cruise','motion',0,1,0],['tiltp','Tilt parallax','motion',0,1,.5],
+ ['cruise','Cruise','motion',0,1,0],['tiltp','Tilt parallax','motion',0,1,.5],['mom','Momentum','motion',0,1,.6],
  ['psize','Particle size','look',1,14,6],['mblur','Motion blur','look',0,8,4.5],['mdist','Streak length','look',20,300,140,1],
  ['bloom','Bloom','look',0,2,.5],['bloomR','Bloom radius','look',.3,2,1],['grain','Grain','look',0,1,.12],
- ['fog','Depth fade','look',0,1,.4],['bright','Brightness','look',.3,2,1],
+ ['fog','Depth fade','look',0,1,.4],['bright','Brightness','look',.3,2,1],['cycle','Color cycle','look',0,1,0],
+ ['tlen','Trail length','look',.5,.97,.86],['tgap','Echo spacing','look',1,8,3,1],['trz','Trail drift','look',-1,1,.25],
  ['tsize','Size','text',.08,.6,.3],['topac','Opacity','text',0,1,.92],['tdrift','Drift / looseness','text',0,1,.3]
 ];
 const PAL={HYPER:['#da1fff','#a6ff00','#17131f'],ACID:['#7dff2a','#00c8a0','#050a07'],MAGMA:['#ff5a1e','#ffd21e','#140604'],UV:['#b44cff','#00f0ff','#07051a'],ICE:['#e8f4ff','#3a7bff','#03060e']};
 const BLENDS=['normal','add','screen','multiply','overlay','difference'];
 const FONTS={POSTER:'900 380px "Big Shoulders Display"',WIDE:'800 300px "Unbounded"',MONO:'700 320px "JetBrains Mono"'};
-const S={cA:PAL.HYPER[0],cB:PAL.HYPER[1],cBg:PAL.HYPER[2],cT:'#f2eaff',tinv:false,rlock:'',tmode:'pinned',ton:false,str:'HYPER',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
+const S={cA:PAL.HYPER[0],cB:PAL.HYPER[1],cBg:PAL.HYPER[2],cT:'#f2eaff',tinv:false,rlock:'',tmode:'pinned',ton:false,streak:'blur',cdir:'same',str:'HYPER',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
 for(const p of P)S[p[0]]=p[5];
 try{Object.assign(S,JSON.parse(localStorage.getItem('hyper01')||'{}'));}catch(e){}
 S.src='demo';S.sound=false;S.scene='hyper';
@@ -227,10 +228,13 @@ const F={
 down:`uniform sampler2D uX;uniform vec2 uTx;void main(){vec2 d=uTx;o=.25*(texture(uX,uv+vec2(-d.x,-d.y))+texture(uX,uv+vec2(d.x,-d.y))+texture(uX,uv+vec2(-d.x,d.y))+texture(uX,uv+vec2(d.x,d.y)));}`,
 blur:`uniform sampler2D uX;uniform vec2 uDir;void main(){vec4 c=texture(uX,uv)*.227;
  c+=(texture(uX,uv+uDir*1.385)+texture(uX,uv-uDir*1.385))*.316;c+=(texture(uX,uv+uDir*3.231)+texture(uX,uv-uDir*3.231))*.07;o=c;}`,
-comp:`uniform sampler2D uScene,uBloom,uT;uniform vec3 cBg,cT;uniform vec4 uTx;uniform float asp,uTon,uBloomAmt,uGrain,uFlash,uTime,uTop,uBlend;
+fb:`uniform sampler2D uPrev,uX;uniform float uDecay,uZoom,uRot,asp;
+void main(){vec2 c=uv-.5;c.x*=asp;float cs=cos(uRot),sn=sin(uRot);c=mat2(cs,-sn,sn,cs)*c*(1.-uZoom);c.x/=asp;vec2 p=c+.5;
+ float in1=step(0.,p.x)*step(p.x,1.)*step(0.,p.y)*step(p.y,1.);o=vec4((texture(uPrev,p).rgb+texture(uX,p).rgb)*uDecay*in1,1);}`,
+comp:`uniform sampler2D uScene,uBloom,uT,uTrail;uniform float uTrailOn;uniform vec3 cBg,cT;uniform vec4 uTx;uniform float asp,uTon,uBloomAmt,uGrain,uFlash,uTime,uTop,uBlend;
 float tmask(vec2 u){vec2 l=(vec2(u.x*asp,u.y)-uTx.xy)/uTx.zw+.5;if(uTon<.5||l.x<0.||l.y<0.||l.x>1.||l.y>1.)return 0.;return texture(uT,l).r;}
 void main(){vec3 s=texture(uScene,uv).rgb,b=texture(uBloom,uv).rgb;
- vec3 col=cBg+(s+b*uBloomAmt)*(1.+uFlash);
+ vec3 col=cBg+(s+texture(uTrail,uv).rgb*uTrailOn+b*uBloomAmt)*(1.+uFlash);
  col=mix(col,1.-exp(-col),smoothstep(.6,1.8,col));
  col+=(hash(gl_FragCoord.xy*.7+fract(uTime)*91.)-.5)*uGrain*.18;
  vec2 q=uv-.5;col*=smoothstep(0.,1.,1.-dot(q,q)*1.2);
@@ -257,7 +261,7 @@ const MAXPT=Math.min(gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1],1024);
 
 /* quality: particle count, streak samples, render scale, noise octaves */
 const QS=[{w:64,h:64,samp:4,scale:.6,oct:2},{w:128,h:128,samp:8,scale:.8,oct:3},{w:256,h:128,samp:16,scale:1,oct:3}];
-let simA,simB,simW=0,simH=0,scene,bA,bB,RW=0,RH=0,ASP=1;
+let simA,simB,simW=0,simH=0,scene,bA,bB,fbA,fbB,RW=0,RH=0,ASP=1,fbN=0;
 function seedSim(){const q=QS[S.q];const n=q.w*q.h,d=new Float32Array(n*4);
  for(let i=0;i<n;i++){const r=Math.random()*300*S.radius,ph=Math.acos(2*Math.random()-1),th=Math.random()*Math.PI*2;
   d[i*4]=r*Math.sin(ph)*Math.cos(th);d[i*4+1]=r*Math.sin(ph)*Math.sin(th)+30;d[i*4+2]=r*Math.cos(ph);d[i*4+3]=Math.random();}
@@ -268,7 +272,7 @@ function resize(){const q=QS[S.q];const dpr=Math.min(window.devicePixelRatio||1,
  const w=Math.max(2,Math.round(cv.clientWidth*dpr)),h=Math.max(2,Math.round(cv.clientHeight*dpr));
  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
  if(q.w!==simW||q.h!==simH)seedSim();
- if(w!==RW||h!==RH){[scene,bA,bB].forEach(kill);RW=w;RH=h;ASP=w/h;
+ if(w!==RW||h!==RH){[scene,bA,bB,fbA,fbB].forEach(kill);fbA=tgt(w,h,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);fbB=tgt(w,h,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);RW=w;RH=h;ASP=w/h;
   scene=tgt(w,h,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);const bw=Math.max(1,w>>2),bh=Math.max(1,h>>2);
   bA=tgt(bw,bh,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);bB=tgt(bw,bh,gl.RGBA16F,gl.HALF_FLOAT,gl.LINEAR);tpos=[ASP*.5,.5];}}
 
@@ -354,16 +358,20 @@ addEventListener('devicemotion',e=>{const th=((screen.orientation&&screen.orient
   const m=Math.hypot(lin[0],lin[1],lin[2]);mot.vib+=(m-mot.vib)*.25;mot.energy+=(Math.abs(m-mot.vib)-mot.energy)*.02;}
  const r=e.rotationRate;if(r&&r.alpha!=null){const[rx,ry]=R(r.beta||0,r.gamma||0);mot.rot=[rx,ry,r.alpha||0];
   if(!mot.gyro&&Math.abs(rx)+Math.abs(ry)+Math.abs(r.alpha)>.05){mot.gyro=true;$('rTilt').textContent='LIVE';}}});
-const ptr={on:false,x:0,y:0,vx:0,vy:0,sx:0,sy:0,t0:0,moved:0};
-cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.on=true;ptr.x=e.clientX;ptr.y=e.clientY;ptr.vx=ptr.vy=0;ptr.sx=e.clientX;ptr.sy=e.clientY;ptr.t0=performance.now();ptr.moved=0;});
+const ptr={on:false,x:0,y:0,vx:0,vy:0,sx:0,sy:0,t0:0,moved:0,vel:0,lt:0};
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.on=true;ptr.x=e.clientX;ptr.y=e.clientY;ptr.vx=ptr.vy=0;ptr.vel=0;ptr.lt=performance.now();cam.spin=0;ptr.sx=e.clientX;ptr.sy=e.clientY;ptr.t0=performance.now();ptr.moved=0;});
 cv.addEventListener('pointermove',e=>{if(!ptr.on)return;const dx=e.clientX-ptr.x,dy=e.clientY-ptr.y;ptr.x=e.clientX;ptr.y=e.clientY;
- cam.yawV-=dx*.006;cam.pitchV+=dy*.004;ptr.moved=Math.max(ptr.moved,Math.hypot(e.clientX-ptr.sx,e.clientY-ptr.sy));});
-const up=()=>{if(!ptr.on)return;ptr.on=false;if(ptr.moved<8&&performance.now()-ptr.t0<350)$('hud').hidden=!$('hud').hidden;};
+ const d=-dx*.006,now=performance.now(),dts=Math.max(4,now-ptr.lt)/1000;ptr.lt=now;ptr.vel=ptr.vel*.5+(d/dts)*.5;cam.drag+=d;cam.pitchV+=dy*.004;ptr.moved=Math.max(ptr.moved,Math.hypot(e.clientX-ptr.sx,e.clientY-ptr.sy));});
+const up=()=>{if(!ptr.on)return;ptr.on=false;
+ /* release: the flick's speed becomes spin, if Momentum is up */
+ cam.spin=S.mom>.01&&performance.now()-ptr.lt<90?Math.max(-14,Math.min(14,ptr.vel)):0;if(ptr.moved<8&&performance.now()-ptr.t0<350)$('hud').hidden=!$('hud').hidden;};
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{ptr.on=false;});
 
 /* ---------- HUD, generated from the manifest ---------- */
 const TABS=['source','react','field','motion','look','text'];
 const hexs=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
+function shiftH(hx,dh){const[r,g,b]=hexs(hx),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;let h=0,s=0;
+ if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);h=(mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4)*60;}return[h+dh,s*100,l*100];}
 function note(m,warn){S._note=m;S._warn=!!warn;const n=$('note');if(n){n.textContent=m;n.className='note'+(warn?' warn':'');}}
 function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
@@ -376,10 +384,13 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=seg('q',[[0,'Lite 4K'],[1,'Mid 16K'],[2,'Max 32K']],'Particles');
   h+=`<div class="seg">${NATIVE?'':'<button id="fs">Fullscreen</button>'}<button id="reset">Reset controls</button></div><input type="file" id="file" accept="audio/*" hidden>`;
   h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
- if(S.tab==='motion'){h+=`<p class="note">Turning the phone (or the car it's mounted in) spins the field through the turn, then it eases back. Braking and accelerating shove the cloud. Road vibration drives the warp; Cruise adds a steady warp for when you're parked.</p>`;
+ if(S.tab==='motion'){h+=`<p class="note">Turning the phone (or the car it's mounted in) spins the field through the turn. With Momentum low it eases back; turned up, turns and flicks keep it spinning and it slows down naturally. Inertia is the shove from braking, accelerating and cornering, so you only feel it in a moving car. Braking and accelerating shove the cloud. Road vibration drives the warp; Cruise adds a steady warp for when you're parked.</p>`;
   h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
  if(S.tab==='look'){h+=`<div class="grp"><span class="lab">Palette</span><div class="seg">${Object.keys(PAL).map(k=>`<button data-pal="${k}">${k}</button>`).join('')}</div>
-  <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="First color"><input type="color" id="cB" value="${S.cB}" aria-label="Second color"><input type="color" id="cBg" value="${S.cBg}" aria-label="Background"><span class="lab">Color / color / background</span></div></div>`;}
+  <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="First color"><input type="color" id="cB" value="${S.cB}" aria-label="Second color"><input type="color" id="cBg" value="${S.cBg}" aria-label="Background"><span class="lab">Color / color / background</span></div></div>`;
+  h+=seg('cdir',[['same','Same way'],['opposite','Opposite ways']],'Color cycle direction');
+  h+=seg('streak',[['blur','Blur'],['trails','Trails'],['both','Both']],'Streaks');
+  h+=`<p class="note">Color cycle at 0 keeps your colors fixed. Trails stack fading echoes behind the particles; Echo spacing sets how far apart they sit, Trail drift zooms them outward (or inward when negative).</p>`;}
  if(S.tab==='text'){h+=seg('ton',[[true,'On'],[false,'Off']],'Text layer');
   h+=seg('tmode',[['float','Float'],['tether','Tethered'],['pinned','Pinned']],'Behavior');
   h+=`<div class="grp"><label class="lab" for="str">Words</label><input type="text" id="str" maxlength="28" value="${S.str.replace(/"/g,'&quot;')}"></div>`;
@@ -417,7 +428,7 @@ paint();
 function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
 function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
  for(const k of['cA','cB','cBg','cT'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
- for(const k of['str','font','blend','tmode'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['str','font','blend','tmode','streak','cdir'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
  for(const k of['ton','tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
  if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
  drawText();save();paint();}
@@ -442,7 +453,7 @@ paintSlots();
 const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
 function randomize(){
  /* the field, its reactions and its look; text, audio source and motion response stay as they are */
- const keep=new Set(['bpm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright']);
+ const keep=new Set(['bpm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright','mom','cycle']);
  for(const p of P){if(keep.has(p[0])||p[6]===1)continue;const r=.1+.8*Math.random();S[p[0]]=+(p[3]+(p[4]-p[3])*r).toFixed(5);}
  S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
  S.curl=+(.0004+Math.random()*.0016).toFixed(5);S.psize=3+Math.random()*7;S.die=Math.random()<.4?0:+(Math.random()*.008).toFixed(4);
@@ -464,7 +475,7 @@ if(NATIVE)setTimeout(()=>{let route='';try{route=String(NATIVE.read()).split(','
 if(!SIM32)note('This GPU only offers half-precision float targets, so motion may look slightly stepped.',1);
 
 /* ---------- frame loop ---------- */
-const cam={orbit:0,yaw:0,pitch:0,yawV:0,pitchV:0};
+const cam={orbit:0,yaw:0,pitch:0,yawV:0,pitchV:0,spin:0,drag:0};let yawPrev=0,cyc=0;
 const inert={o:[0,0,0],v:[0,0,0]};let offPrev=[0,0,0];
 const wrp={trav:0,travP:0,speed:0};const SPAN=1300;
 let last=performance.now()/1000,fpsS=60,fpsT=0,moveT=0;
@@ -477,14 +488,22 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const sg=S.tinv?-1:1,D2R=Math.PI/180;
 
  /* look-around: gyro rates spin the view through a turn, then it eases back to center */
- if(mot.gyro){cam.yawV+=-mot.rot[0]*D2R*S.look*sg*fdt*1.2;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.8;}
+ const mom=S.mom;
+ /* gyro turns: low Momentum = the view follows the turn and eases back; high Momentum = the turn winds up a spin that keeps going */
+ if(mot.gyro){const gy=-mot.rot[0]*D2R*S.look*sg*1.2;cam.yawV+=gy*fdt*(1-mom);if(!ptr.on)cam.spin+=gy*fdt*mom*1.4;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.8;}
  const gr=tiltSeen?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];
  for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
  const tilt=[(gr[0]-gBase[0])*S.tiltp,(gr[1]-gBase[1])*S.tiltp];
  cam.yaw+=cam.yawV;cam.pitch+=cam.pitchV;cam.yawV=0;cam.pitchV=0;
  cam.yaw*=Math.exp(-fdt*.35);cam.pitch*=Math.exp(-fdt*.6);cam.pitch=Math.max(-1.1,Math.min(1.1,cam.pitch));
- cam.orbit+=S.orbit*fdt*.09;
- const yaw=cam.orbit+cam.yaw+tilt[0]*.9,pitch=.08+Math.sin(t*.15)*.05+cam.pitch-tilt[1]*.7;
+ /* friction is part proportional, part constant: hard flicks coast a long time, and every spin still settles naturally */
+ if(!ptr.on&&cam.spin!==0){const kl=.035+(1-mom)*3,kc=.012+(1-mom)*.6,sgn=Math.sign(cam.spin);cam.spin-=(kl*cam.spin+sgn*kc)*fdt;if(Math.sign(cam.spin)!==sgn)cam.spin=0;}
+ cam.orbit+=S.orbit*fdt*.09+cam.spin*fdt+cam.drag;cam.drag=0;
+ const yaw=cam.orbit+cam.yaw+tilt[0]*.9,yawRate=(yaw-yawPrev)/fdt;yawPrev=yaw;
+ /* color cycle: both colors travel the wheel, together or in opposite directions, keeping their starting gap */
+ cyc=(cyc+S.cycle*fdt*45)%360;const cyc2=S.cdir==='opposite'?-cyc:cyc;
+ const C1=S.cycle>0?hexs(hsl(...shiftH(S.cA,cyc))):hexs(S.cA),C2=S.cycle>0?hexs(hsl(...shiftH(S.cB,cyc2))):hexs(S.cB);
+ const pitch=.08+Math.sin(t*.15)*.05+cam.pitch-tilt[1]*.7;
  const T=[0,30,0],RAD=620,eye=[T[0]+RAD*Math.sin(yaw)*Math.cos(pitch),T[1]+RAD*Math.sin(pitch),T[2]+RAD*Math.cos(yaw)*Math.cos(pitch)];
  const V=lookAt(eye,T),Pm=persp(45*D2R,ASP,10,5000),VP=mul(Pm,V.m);
 
@@ -530,16 +549,21 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  /* draw particles additively into the HDR scene buffer */
  gl.bindFramebuffer(gl.FRAMEBUFFER,scene.fb);gl.viewport(0,0,RW,RH);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PR.pts.p);
- set(PR.pts,{uPos:simA.t,uPrev:simB.t,uW:simW,uVP:VP,uV:V.m,uRes:[RW,RH],uSize:S.psize,uMotion:S.mblur>0?S.mblur:0,uMDist:S.mdist*(RH/900),uMaxPt:MAXPT,
+ set(PR.pts,{uPos:simA.t,uPrev:simB.t,uW:simW,uVP:VP,uV:V.m,uRes:[RW,RH],uSize:S.psize,uMotion:S.streak==='trails'?0:S.mblur,uMDist:S.mdist*(RH/900),uMaxPt:MAXPT,
   uPx:Math.min(RW,RH)/820,uFog:S.fog,uHatSeed:fx.hatSeed,uSwell:swell,uFwd:V.f,uOff:off,uOffP:offPrev,uShock:[fx.shR,fx.shA,fx.shRp,fx.shAp],uTw:[fx.tw,fx.twP],uTrav:[wrp.trav%SPAN,wrp.travP%SPAN],
-  uC1:hexs(S.cA),uC2:hexs(S.cB),uSamples:q.samp,uBright:S.bright*(1+flash*1.2),uHat:fx.hat});
+  uC1:C1,uC2:C2,uSamples:q.samp,uBright:S.bright*(1+flash*1.2),uHat:fx.hat});
  gl.drawArrays(gl.POINTS,0,simW*simH);gl.disable(gl.BLEND);offPrev=off;
+
+ /* feedback trails: every few frames the last echo is faded, nudged (zoom, spin) and stacked under the new frame */
+ const trOn=S.streak!=='blur';
+ if(trOn&&++fbN>=S.tgap){fbN=0;const g=S.tgap;
+  pass(PR.fb,fbB,RW,RH,{uPrev:fbA.t,uX:scene.t,uDecay:S.tlen,uZoom:(S.trz*.012+wrp.speed*.025)*g,uRot:-yawRate*fdt*g*.6,asp:ASP});const x=fbA;fbA=fbB;fbB=x;}
 
  /* bloom at quarter resolution */
  const bl=S.bloom>.01;
  if(bl){pass(PR.down,bA,bA.w,bA.h,{uX:scene.t,uTx:[1/RW,1/RH]});
   for(let i=0;i<2;i++){const r=S.bloomR*(1+i);pass(PR.blur,bB,bB.w,bB.h,{uX:bA.t,uDir:[r/bA.w,0]});pass(PR.blur,bA,bA.w,bA.h,{uX:bB.t,uDir:[0,r/bA.h]});}}
- pass(PR.comp,null,cv.width,cv.height,{uScene:scene.t,uBloom:bA.t,uT:textTex,cBg:hexs(S.cBg),cT:hexs(S.cT),uTx:[tpos[0],tpos[1],tw,th],asp:ASP,uTon:S.ton?1:0,
+ pass(PR.comp,null,cv.width,cv.height,{uScene:scene.t,uTrail:fbA.t,uTrailOn:trOn?.55:0,uBloom:bA.t,uT:textTex,cBg:hexs(S.cBg),cT:hexs(S.cT),uTx:[tpos[0],tpos[1],tw,th],asp:ASP,uTon:S.ton?1:0,
   uBloomAmt:bl?S.bloom:0,uGrain:S.grain,uFlash:flash*.3,uTime:t,uTop:S.topac,uBlend:BLENDS.indexOf(S.blend)});}
 requestAnimationFrame(frame);
 })();
