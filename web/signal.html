@@ -1,0 +1,540 @@
+<title>Signal Survey</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Silkscreen&family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@800&display=swap">
+<style>
+/* Layout: full-bleed survey canvas with a 2D annotation layer. The HUD is a flier frame laid over it: wordmark and readouts in the left corners, one control column docked right (bottom sheet in portrait). Tap to hide or show the HUD; drag to orbit, pinch to zoom. */
+:root{
+  --ink:#0b0806; --fg:#fff1dc; --dim:#a8937f; --line:rgba(255,241,220,.16); --panel:rgba(11,8,6,.76); --volt:#f2b48a;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);font-family:var(--mono);font-size:11px}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#ov{position:fixed;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.hud{position:fixed;inset:0;pointer-events:none;display:grid;grid-template-columns:minmax(0,1fr) min(340px,48%);gap:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-bottom,0px))}
+.frame{display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.mark{font-family:var(--display);font-weight:900;font-size:clamp(34px,9vh,64px);line-height:.82;letter-spacing:-.01em;text-transform:uppercase;color:var(--volt);mix-blend-mode:difference}
+.mark small{display:block;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.22em;color:var(--fg);margin-top:8px;line-height:1.5}
+.lowl{display:flex;flex-direction:column;gap:9px;align-items:flex-start;min-width:0}
+.rlock{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);padding:7px 10px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.rlock b{font-weight:400;color:var(--dim)}
+.rlock svg{width:11px;height:11px;flex:none}
+.rlock[aria-pressed="true"]{background:var(--volt);border-color:var(--volt);color:var(--ink);font-weight:700}
+.rlock[aria-pressed="true"] b{color:var(--ink)}
+.read{display:flex;flex-wrap:wrap;gap:4px 14px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg);font-variant-numeric:tabular-nums;text-shadow:0 0 6px #000}
+.read b{font-weight:400;color:var(--dim)}
+.hits{display:inline-flex;gap:4px;vertical-align:middle}
+.hits i{width:9px;height:9px;border:1px solid var(--fg);opacity:.35}
+.hits i.on{background:var(--volt);border-color:var(--volt);opacity:1}
+.panel{pointer-events:auto;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:.14em;text-transform:uppercase}
+button:focus-visible,input:focus-visible,select:focus-visible,label.btn:focus-within{outline:1px solid var(--volt);outline-offset:1px}
+.tabs button{padding:11px 0;color:var(--dim);font-size:9px;letter-spacing:.06em}
+.tabs button[aria-selected="true"]{color:var(--ink);background:var(--volt);font-weight:700}
+.body{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.row{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
+.row output{color:var(--volt);font-variant-numeric:tabular-nums}
+.row input[type=range]{grid-column:1/-1}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:none;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--fg);opacity:.5}
+input[type=range]::-moz-range-track{height:1px;background:var(--fg);opacity:.5}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;margin-top:-9px;background:var(--volt);border:0;border-radius:0}
+input[type=range]::-moz-range-thumb{width:10px;height:18px;background:var(--volt);border:0;border-radius:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.btn{border:1px solid var(--line);padding:8px 10px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:700}
+.lab{color:var(--dim);letter-spacing:.2em;text-transform:uppercase;font-size:10px}
+.grp{display:flex;flex-direction:column;gap:8px}
+.cols{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);background:none}
+input[type=text],select{font:inherit;color:var(--fg);background:rgba(255,241,220,.06);border:1px solid var(--line);padding:8px;width:100%;letter-spacing:.08em;border-radius:0}
+.note{color:var(--dim);line-height:1.6;letter-spacing:.04em}
+.note.warn{color:var(--fg)}
+.foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,2.2fr);border-top:1px solid var(--line)}
+.foot button{position:relative;overflow:hidden;padding:11px 6px;font-size:10px;border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
+.foot button:first-child{border-left:0}
+.foot button::after{content:"";position:absolute;inset:0;background:var(--volt);mix-blend-mode:difference;transform:scaleX(var(--p,0));transform-origin:left;pointer-events:none}
+.foot .sw{width:10px;height:10px;border:1px solid var(--fg);flex:none}
+.foot .rand{color:var(--volt);font-weight:700}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);padding:8px 14px;background:var(--panel);border:1px solid var(--line);letter-spacing:.14em;text-transform:uppercase;font-size:10px;pointer-events:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);max-width:calc(100% - 32px);text-align:center}
+#fatal{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;line-height:1.7}
+@media (max-aspect-ratio:1/1){
+  .hud{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 54%}
+  .frame{flex-direction:row;align-items:flex-start;gap:12px}
+  .read{justify-content:flex-end;text-align:right}
+  .lowl{align-items:flex-end}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<canvas id="gl"></canvas>
+<canvas id="ov"></canvas>
+<div class="hud" id="hud">
+  <div class="frame">
+    <div class="mark">Signal<small>SCENE 03 / SURVEY<br>LOOK-DEV BUILD</small></div>
+    <div class="lowl">
+    <button class="rlock" id="rlock" aria-pressed="false" hidden><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5.5"/><path id="shackle" d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg><b>Rotation</b><span>Auto</span></button>
+    <div class="read">
+      <span><b>FPS</b> <span id="rFps">--</span></span>
+      <span><b>NODES</b> <span id="rSim">--</span></span>
+      <span><b>IN</b> <span id="rIn">DEMO</span></span>
+      <span><b>GYRO</b> <span id="rTilt">DRAG</span></span>
+      <span><b>MOVE</b> <span id="rMove">0.00</span></span>
+      <span><b>K S H</b> <span class="hits"><i id="h0"></i><i id="h1"></i><i id="h2"></i></span></span>
+    </div>
+    </div>
+  </div>
+  <div class="panel" id="panel">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="body" id="body"></div>
+    <div class="foot" id="foot">
+      <button class="slot" data-slot="0" aria-label="Preset 1"><i class="sw"></i>1</button>
+      <button class="slot" data-slot="1" aria-label="Preset 2"><i class="sw"></i>2</button>
+      <button class="slot" data-slot="2" aria-label="Preset 3"><i class="sw"></i>3</button>
+      <button class="rand" id="rand">Hold: Randomize</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div id="fatal" hidden>This device's browser can't run the survey view (it needs WebGL2).</div>
+
+<script>
+(()=>{
+'use strict';
+/* ---------- scene manifest ---------- */
+const P=[
+ ['bpm','Demo tempo','source',90,220,174,1],
+ ['kick','Kick pulse','react',0,1,.6],['snare','Snare traces','react',0,1,.55],['hat','Hat shimmer','react',0,1,.5],
+ ['burst','Impact','react',0,2,1],['flash','Flash','react',0,1,.3],
+ ['relief','Relief','terrain',0,2,1],['tscale','Terrain scale','terrain',.4,2,1],['grid','Grid','terrain',0,1,.5],
+ ['lattice','Plan lattice','terrain',0,1,.45],['trace','Trace pulses','terrain',0,1,.6],['fog','Depth fade','terrain',0,1,.5],
+ ['look','Look-around','motion',0,2,1],['mom','Momentum','motion',0,1,.6],['warp','Road warp','motion',0,2,1],
+ ['cruise','Cruise','motion',0,1,.15],['tiltp','Tilt parallax','motion',0,1,.4],
+ ['lineb','Line brightness','look',.2,2,1],['glow','Glow','look',0,1.5,.8],['nsize','Node size','look',.5,2,1],
+ ['ghost','Faded signals','look',0,1,.45],['grain','Grain','look',0,1,.1]
+];
+const PAL={COPPER:['#f2b48a','#fff1dc','#0b0806'],MONO:['#ffffff','#8f99a3','#040404'],PHOSPHOR:['#9dffcf','#3fd8ff','#020806'],SOLAR:['#ffd36b','#7dff9a','#06070a'],ICE:['#d8ecff','#5a8cff','#03050b']};
+const S={cA:PAL.COPPER[0],cB:PAL.COPPER[1],cBg:PAL.COPPER[2],tinv:false,rlock:'',side:'left',src:'demo',sound:false,q:1,tab:'react'};
+for(const p of P)S[p[0]]=p[5];
+try{Object.assign(S,JSON.parse(localStorage.getItem('signal01')||'{}'));}catch(e){}
+S.src='demo';S.sound=false;S.scene='signal';
+const save=()=>{try{localStorage.setItem('signal01',JSON.stringify(S));}catch(e){}};
+const $=id=>document.getElementById(id);
+const NATIVE=window.SlickNative||null;
+const LIVE=!!(NATIVE&&NATIVE.startSignals);
+try{localStorage.setItem('slickScene','signal');}catch(e){}
+const SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html'};
+
+/* ---------- GL ---------- */
+const cv=$('gl'),ov=$('ov'),cx=ov.getContext('2d');
+const gl=cv.getContext('webgl2',{alpha:false,antialias:true,powerPreference:'high-performance'});
+if(!gl){$('fatal').hidden=false;$('hud').hidden=true;return;}
+const NOISE=`
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float h1(float n){return fract(sin(n)*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+17.1;a*=.5;}return s;}
+`;
+const VHEAD=`#version 300 es
+precision highp float;
+uniform mat4 uVP;uniform vec3 uEye;uniform float uTrav,uTime,uPR,uPA,uFog;
+const float W=3000.;
+${NOISE}
+float ringAt(vec3 p){float d=length(p.xz);float k=(d-uPR)/45.;return exp(-k*k)*uPA;}
+float fogAt(vec3 p){return exp(-max(distance(p,uEye)-400.,0.)*.0011*uFog);}
+`;
+const FHEAD=`#version 300 es
+precision highp float;
+uniform vec3 uC;uniform float uB;out vec4 o;
+`;
+/* contour terrain: one LINES draw; rows slide toward the viewer while the height field scrolls with travel */
+const TER_VS=VHEAD+`
+uniform float uRelief,uScale,uBass,uTr;uniform int uRows,uCols;
+out float vA,vHot;
+float heightAt(vec2 w,vec2 l){float n=fbm(w*.0016*uScale);float pk=pow(max(n-.38,0.)*1.7,1.5);
+ float rg=1.-abs(vn(w*.0042*uScale)*2.-1.);
+ return (pk*300.+rg*rg*pk*70.)*uRelief*(1.+uBass*.25)*smoothstep(220.,720.,length(l));}
+void main(){int id=gl_VertexID;int cpr=uCols-1;int seg=id/2;int e=id-seg*2;int row=seg/cpr;int col=seg-row*cpr+e;
+ float dz=W/float(uRows);float x=(float(col)/float(cpr)-.5)*W;float z=-W*.5+float(row)*dz+mod(uTrav,dz);
+ float rowW=floor((uTrav-mod(uTrav,dz))/dz+.5)-float(row);
+ float hgt=heightAt(vec2(x,z-uTrav),vec2(x,z));vec3 p=vec3(x,hgt,z);
+ float edge=smoothstep(W*.5,W*.34,max(abs(x),abs(z)));float fog=fogAt(p);
+ float rs=h1(rowW*7.13);float cxp=(fract(rs*13.7+uTime*(.025+.05*h1(rowW*3.1)))-.5)*W*1.1;
+ float tr=exp(-pow((x-cxp)/80.,2.))*uTr*step(.45,h1(rowW*1.9));
+ float lift=smoothstep(1.,30.,hgt);
+ vA=(.14+.86*lift)*edge*fog;vHot=(ringAt(p)+tr)*edge*fog*(.3+.7*lift);
+ gl_Position=uVP*vec4(p,1.);}`;
+const TER_FS=FHEAD+`in float vA,vHot;void main(){o=vec4(uC*vA*uB*.85+mix(uC,vec3(1),.45)*vHot*1.5,1);}`;
+/* ground grid: lines across both axes, the cross lines scroll with travel */
+const GRID_VS=VHEAD+`uniform int uN;out vec3 vP;
+void main(){int id=gl_VertexID;int ln=id/2;int e=id-ln*2;int dir=ln/uN;int k=ln-dir*uN;float sp=W/float(uN);
+ float a=-W*.5+float(k)*sp;float b=(float(e)-.5)*W;
+ vec3 p=dir==0?vec3(a,-1.,b):vec3(b,-1.,a+mod(uTrav,sp));vP=p;gl_Position=uVP*vec4(p,1.);}`;
+const GRID_FS=`#version 300 es
+precision highp float;uniform vec3 uC,uEye;uniform float uB,uPR,uPA,uFog;in vec3 vP;out vec4 o;
+void main(){float edge=smoothstep(1500.,900.,max(abs(vP.x),abs(vP.z)));float fog=exp(-max(distance(vP,uEye)-400.,0.)*.0011*uFog);
+ float d=length(vP.xz);float k=(d-uPR)/45.;float ring=exp(-k*k)*uPA;
+ o=vec4(uC*(uB+ring*.8)*edge*fog,1);}`;
+const DOT_VS=VHEAD+`uniform int uN;uniform float uHat,uSeed,uPx;out float vA;
+void main(){int id=gl_VertexID;int i=id/uN;int j=id-i*uN;float sp=W/float(uN);
+ vec3 p=vec3(-W*.5+float(i)*sp,-1.,-W*.5+float(j)*sp+mod(uTrav,sp));
+ float tw=step(.82,h21(vec2(float(i),float(j))+uSeed));
+ vA=smoothstep(1500.,900.,max(abs(p.x),abs(p.z)))*fogAt(p)*(1.+ringAt(p)*2.+uHat*tw*3.);
+ gl_Position=uVP*vec4(p,1.);gl_PointSize=uPx*(1.5+uHat*tw*1.5);}`;
+const DOT_FS=FHEAD+`in float vA;void main(){o=vec4(uC*uB*vA,1);}`;
+/* plan lattice: a Fresco-style top view on the ground under the signal cluster */
+const LAT_VS=VHEAD+`in vec3 aP;uniform float uRot;out float vA;
+void main(){float c=cos(uRot),s=sin(uRot);vec3 p=vec3(aP.x*c-aP.z*s,.5,aP.x*s+aP.z*c);
+ vA=fogAt(p)*(1.+ringAt(p)*3.);gl_Position=uVP*vec4(p,1.);}`;
+const LAT_FS=FHEAD+`in float vA;void main(){o=vec4(uC*uB*vA,1);}`;
+const FIN_FS=`#version 300 es
+precision highp float;in vec2 uv;out vec4 o;uniform float uGrain,uTime;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+void main(){vec2 q=uv-.5;float vig=1.-smoothstep(0.,1.,1.-dot(q,q)*1.25);float g=(hash(gl_FragCoord.xy*.7+fract(uTime)*91.)-.5)*uGrain*.12;
+ o=vec4(vec3(max(g,0.)),vig*.85);}`;
+const QVS=`#version 300 es
+out vec2 uv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.-1.,0,1);}`;
+function compile(vs,fs,attrs){const p=gl.createProgram();for(const[t,s]of[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh);}
+ if(attrs)attrs.forEach((a,i)=>gl.bindAttribLocation(p,i,a));
+ gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+ const u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);u[a.name]={l:gl.getUniformLocation(p,a.name),t:a.type};}return{p,u};}
+const PR={ter:compile(TER_VS,TER_FS),grid:compile(GRID_VS,GRID_FS),dot:compile(DOT_VS,DOT_FS),lat:compile(LAT_VS,LAT_FS,['aP']),fin:compile(QVS,FIN_FS)};
+function use(pr,un){gl.useProgram(pr.p);for(const k in un){const e=pr.u[k];if(!e)continue;const v=un[k],l=e.l;
+  if(e.t===gl.INT)gl.uniform1i(l,v);else if(e.t===gl.FLOAT_MAT4)gl.uniformMatrix4fv(l,false,v);
+  else if(typeof v==='number')gl.uniform1f(l,v);else if(v.length===2)gl.uniform2f(l,v[0],v[1]);else gl.uniform3f(l,v[0],v[1],v[2]);}}
+const VAO0=gl.createVertexArray();
+/* lattice geometry: rings, spokes and a triangulated truss between rings */
+const LAT=(()=>{const v=[],seg=(a,b)=>v.push(a[0],0,a[1],b[0],0,b[1]),pt=(r,a)=>[Math.cos(a)*r,Math.sin(a)*r];
+ const rings=[90,150,215,285,360,440,520,545],sp=36;
+ rings.forEach(r=>{const n=Math.max(48,Math.round(r/5));for(let i=0;i<n;i++)seg(pt(r,i/n*6.2832),pt(r,(i+1)/n*6.2832));});
+ for(let i=0;i<sp;i++){const a=i/sp*6.2832;seg(pt(rings[0],a),pt(rings[6],a));}
+ for(let k=1;k<6;k++)for(let i=0;i<sp;i++){const a=i/sp*6.2832,b=(i+.5)/sp*6.2832,c=(i+1)/sp*6.2832;
+  seg(pt(rings[k],a),pt(rings[k+1],b));seg(pt(rings[k+1],b),pt(rings[k],c));}
+ for(let i=0;i<120;i++){if(i%10<2)continue;const a=i/120*6.2832;seg(pt(rings[6],a),pt(rings[7],a));}
+ const vao=gl.createVertexArray();gl.bindVertexArray(vao);const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);gl.bindVertexArray(null);
+ return{vao,n:v.length/3};})();
+
+const QS=[{rows:40,cols:110,scale:.75,grid:36},{rows:64,cols:170,scale:1,grid:48},{rows:96,cols:240,scale:1,grid:64}];
+let RW=0,RH=0,ASP=1,OW=0,OH=0,ODPR=1;
+function resize(){const q=QS[S.q];const dpr=Math.min(window.devicePixelRatio||1,2)*q.scale;
+ const w=Math.max(2,Math.round(cv.clientWidth*dpr)),h=Math.max(2,Math.round(cv.clientHeight*dpr));
+ if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}RW=w;RH=h;ASP=w/h;
+ ODPR=Math.min(window.devicePixelRatio||1,2);const ow=Math.round(ov.clientWidth*ODPR),oh=Math.round(ov.clientHeight*ODPR);
+ if(ov.width!==ow||ov.height!==oh){ov.width=ow;ov.height=oh;}OW=ov.clientWidth;OH=ov.clientHeight;}
+
+/* ---------- tiny matrix kit ---------- */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l];},dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function lookAt(eye,tg){const f=norm(sub(tg,eye)),r=norm(cross(f,[0,1,0])),u=cross(r,f);
+ return new Float32Array([r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-dot(r,eye),-dot(u,eye),dot(f,eye),1]);}
+function persp(fov,a,n,fa){const t=1/Math.tan(fov/2);return new Float32Array([t/a,0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0]);}
+function mul(a,b){const o=new Float32Array(16);for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+j]*b[i*4+k];o[i*4+j]=s;}return o;}
+let VPm=new Float32Array(16);
+function proj(x,y,z){const m=VPm,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=1)return null;
+ return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*OW,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*OH,w];}
+
+/* ---------- audio feature bus ---------- */
+const lvl=[0,0,0];let flash=0;
+const fx={pR:9999,pA:0,tr:0,hat:0,seed:0,kickT:0};
+let sigs=null;
+function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=>el.classList.remove('on'),70);
+ if(kind===0){if(S.kick<=0)return;fx.pR=0;fx.pA=Math.min(1.6,s*S.kick*1.5*S.burst);flash=Math.max(flash,s*S.flash);fx.kickT=performance.now();}
+ else if(kind===1){if(S.snare<=0)return;fx.tr=Math.min(2.5,fx.tr+s*S.snare*1.6*S.burst);}
+ else{if(S.hat<=0)return;fx.hat=Math.min(1,fx.hat+s*S.hat);fx.seed=Math.random()*100;}
+ if(sigs)sigs.hit(kind,s);}
+let ac,an,fd,out,srcNode,micStream,noiseBuf;
+function audio(){if(ac){ac.resume();return ac;}ac=new (window.AudioContext||window.webkitAudioContext)();an=ac.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0;fd=new Uint8Array(512);
+ out=ac.createGain();an.connect(out);out.connect(ac.destination);noiseBuf=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return ac;}
+function hitSound(kind,t){const g=ac.createGain();g.connect(an);
+ if(kind===0){const o=ac.createOscillator();o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(42,t+.11);g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.001,t+.28);o.connect(g);o.start(t);o.stop(t+.3);}
+ else{const n=ac.createBufferSource();n.buffer=noiseBuf;const f=ac.createBiquadFilter();f.type=kind===1?'bandpass':'highpass';f.frequency.value=kind===1?1800:7000;
+  g.gain.setValueAtTime(kind===1?.7:.22,t);g.gain.exponentialRampToValueAtTime(.001,t+(kind===1?.14:.035));n.connect(f);f.connect(g);n.start(t);n.stop(t+.2);}}
+const PAT={0:[0,10],1:[4,12],2:[0,2,3,6,8,9,11,14,15]};let step=0,nextT=0;
+function seq(){if(S.src!=='demo')return;const live=S.sound&&ac&&ac.state==='running';const now=live?ac.currentTime:performance.now()/1000;
+ if(nextT<now-.3||nextT>now+1)nextT=now;
+ while(nextT<now+(live?.06:0)){for(const k of[0,1,2])if(PAT[k].includes(step)){if(live)hitSound(k,nextT);else{emit(k,k===2?.5:.9);lvl[k]=1;}}
+  step=(step+1)%16;nextT+=15/S.bpm;}}
+const BD=[[1,3,.09],[5,40,.09],[70,300,.045]].map(b=>({lo:b[0],hi:b[1],refr:b[2],pk:1e-3,prev:0,avg:0,last:0}));
+function analyse(t){if(NATIVE&&(S.src==='phone'||S.src==='capture')){nativeRead(t);return;}
+ const live=ac&&ac.state==='running'&&(S.src!=='demo'||S.sound);
+ if(!live){for(let i=0;i<3;i++)lvl[i]*=.88;return;}
+ an.getByteFrequencyData(fd);
+ bands(BD.map(b=>{let e=0;for(let k=b.lo;k<=b.hi;k++){const v=fd[k]/255;e+=v*v;}return e/(b.hi-b.lo+1);}),t,1e-3);}
+/* native bridge: the Android shell measures the same three bands and hands over peak-held energies */
+let nSeq=-1,nMax=0,nStart=0,nWarned=false,nHzT=0;
+function nativeRead(t){let r;try{r=String(NATIVE.read()).split(',');}catch(e){return;}
+ if(t-nHzT>.5){nHzT=t;$('rIn').textContent=(S.src==='phone'?'PHONE ':'CAPTURE ')+Math.round(+r[4]||0)+'HZ';}
+ if(!nWarned&&nStart>0&&t-nStart>6&&nMax<1e-9){nWarned=true;note(S.src==='capture'?'Capture is running but hearing silence. The playing app may block capture. Try Phone audio.':'No sound detected yet. Start music in Spotify or any other app.',1);}
+ const sq=+r[0];if(sq===nSeq){for(let i=0;i<3;i++)lvl[i]*=.94;return;}
+ nSeq=sq;const e=[+r[1]||0,+r[2]||0,+r[3]||0];nMax=Math.max(nMax,e[0],e[1],e[2]);
+ if(nWarned&&nMax>1e-9){nWarned=false;note('Hearing audio.');}bands(e,t,1e-7);}
+window.__slickStatus=(route,state,msg)=>{const s=route==='vis'?'phone':'capture';
+ if(state==='running'){stopSrc();nSeq=-1;nMax=0;nWarned=false;nStart=performance.now()/1000;BD.forEach(b=>{b.pk=1e-7;b.prev=0;b.avg=0;});setSrc(s,msg);}
+ else if(state==='error'){if(S.src===s)setSrc('demo');note(msg,1);}
+ else note(msg);};
+function bands(E,t,floor){const sens=[S.kick,S.snare,S.hat];
+ BD.forEach((b,i)=>{const e=E[i];
+  b.pk=Math.max(e,b.pk*.9995,floor);const n=e/b.pk,flux=Math.max(0,n-b.prev);b.prev=n;b.avg+=(flux-b.avg)*.06;
+  lvl[i]+=(n-lvl[i])*(n>lvl[i]?.6:.1);
+  if(flux>(1.05-sens[i])*.45+b.avg*1.4&&t-b.last>b.refr){b.last=t;emit(i,Math.min(1,.35+flux*1.6));}});}
+function stopSrc(){if(srcNode){try{srcNode.stop&&srcNode.stop();}catch(e){}srcNode.disconnect();srcNode=null;}if(micStream){micStream.getTracks().forEach(x=>x.stop());micStream=null;}}
+function setSrc(s,msg){S.src=s;$('rIn').textContent=s.toUpperCase();if(out)out.gain.value=s==='mic'?0:1;note(msg||'');paint();}
+async function useMic(){try{audio();const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});stopSrc();micStream=st;srcNode=ac.createMediaStreamSource(st);srcNode.connect(an);setSrc('mic','Listening through the microphone.');}
+ catch(e){note(NATIVE?'The microphone was blocked. Allow microphone access for the app and try again.':'The microphone is blocked on this page. It works when the file is served from your own https domain.',1);}}
+async function useFile(file){if(!file)return;try{audio();note('Decoding '+file.name+' ...');const buf=await ac.decodeAudioData(await file.arrayBuffer());stopSrc();srcNode=ac.createBufferSource();srcNode.buffer=buf;srcNode.loop=true;srcNode.connect(an);srcNode.start();setSrc('track','Playing '+file.name);}
+ catch(e){note('That file could not be decoded. Try an MP3, WAV, or M4A.',1);}}
+
+
+/* ---------- motion: same response as Hyper (gyro turns, road warp), plus pinch to zoom ---------- */
+const mot={g:[0,0,0],acc:[0,0,0],rot:[0,0,0],gyro:false,lp:[0,0,0],vib:0,energy:0};
+let gBase=[0,0],tiltSeen=false;
+addEventListener('devicemotion',e=>{const th=((screen.orientation&&screen.orientation.angle)||0)*Math.PI/180,c=Math.cos(th),s=Math.sin(th);
+ const R=(x,y)=>[x*c+y*s,-x*s+y*c];
+ const ag=e.accelerationIncludingGravity;if(ag&&ag.x!=null){const[x,y]=R(ag.x,ag.y);mot.g=[x/9.8,y/9.8,(ag.z||0)/9.8];if(!tiltSeen&&Math.abs(ag.x)+Math.abs(ag.y)>.2)tiltSeen=true;}
+ const a=e.acceleration;let lin=null;
+ if(a&&a.x!=null){const[x,y]=R(a.x,a.y);lin=[x,y,a.z||0];}
+ else if(ag&&ag.x!=null){for(let i=0;i<3;i++)mot.lp[i]+=(mot.g[i]-mot.lp[i])*.05;lin=[0,1,2].map(i=>(mot.g[i]-mot.lp[i])*9.8);}
+ if(lin){mot.acc=lin;const m=Math.hypot(lin[0],lin[1],lin[2]);mot.vib+=(m-mot.vib)*.25;mot.energy+=(Math.abs(m-mot.vib)-mot.energy)*.02;}
+ const r=e.rotationRate;if(r&&r.alpha!=null){const[rx,ry]=R(r.beta||0,r.gamma||0);mot.rot=[rx,ry,r.alpha||0];
+  if(!mot.gyro&&Math.abs(rx)+Math.abs(ry)+Math.abs(r.alpha)>.05){mot.gyro=true;$('rTilt').textContent='LIVE';}}});
+const cam={orbit:.6,yaw:0,pitch:0,yawV:0,pitchV:0,spin:0,drag:0,dist:720};
+const ptr={on:false,x:0,y:0,sx:0,sy:0,t0:0,moved:0,vel:0,lt:0},pts=new Map();let pinch0=0;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);
+ if(pts.size===2){const[a,b]=[...pts.values()];pinch0=Math.hypot(a[0]-b[0],a[1]-b[1]);ptr.moved=99;return;}
+ ptr.on=true;ptr.x=e.clientX;ptr.y=e.clientY;ptr.sx=e.clientX;ptr.sy=e.clientY;ptr.t0=performance.now();ptr.moved=0;ptr.vel=0;ptr.lt=ptr.t0;cam.spin=0;});
+cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);
+ if(pts.size>=2){const[a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch0>0){cam.dist=Math.max(220,Math.min(1700,cam.dist*pinch0/d));}pinch0=d;return;}
+ if(!ptr.on)return;const dx=e.clientX-ptr.x,dy=e.clientY-ptr.y;ptr.x=e.clientX;ptr.y=e.clientY;
+ const d=-dx*.006,now=performance.now(),dts=Math.max(4,now-ptr.lt)/1000;ptr.lt=now;ptr.vel=ptr.vel*.5+(d/dts)*.5;cam.drag+=d;cam.pitchV+=dy*.004;
+ ptr.moved=Math.max(ptr.moved,Math.hypot(e.clientX-ptr.sx,e.clientY-ptr.sy));});
+const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch0=0;if(!ptr.on)return;if(pts.size>0)return;ptr.on=false;
+ cam.spin=S.mom>.01&&performance.now()-ptr.lt<90?Math.max(-14,Math.min(14,ptr.vel)):0;
+ if(ptr.moved<8&&performance.now()-ptr.t0<350)$('hud').hidden=!$('hud').hidden;};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);ptr.on=false;pinch0=0;});
+addEventListener('wheel',e=>{cam.dist=Math.max(220,Math.min(1700,cam.dist*Math.exp(e.deltaY*.001)));},{passive:true});
+
+/* ---------- signals: live scan from the Android shell, or a demo feed ---------- */
+const WIN={w:45000,b:20000};   // how long a signal counts as present after it was last heard (Wi-Fi scans are throttled)
+const hstr=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294967295;};
+function abbr(name,id,type){let s=(name||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+ if(!s)return(type==='b'?'BT':'WF')+'-'+(id.replace(/[^0-9a-f]/gi,'').slice(-4).toUpperCase()||'0000');
+ const w=s.split(' ').map(x=>x.length<=3?x:x[0]+x.slice(1).replace(/[AEIOU]/g,'')).filter(Boolean);
+ let out=w.join('.');if(out.length>11)out=out.slice(0,11).replace(/\.$/,'');return out;}
+sigs={map:new Map(),status:'',
+ ingest(list,now){for(const r of list){if(!r||!r.i)continue;let n=this.map.get(r.i);const seen=now-(r.a||0);
+  if(!n){const a=hstr(r.i)*6.2832,hh=hstr(r.i+'y');n={id:r.i,type:r.t==='b'?'b':'w',name:r.n||'',label:'',rssi:r.r,s:0,seen,first:now,ang:a,hy:hh,
+    pos:null,vel:[0,0,0],jit:[0,0,0],kp:0,sh:0,ly:-1,lx:0,la:0};this.map.set(r.i,n);}
+  if(seen>=n.seen){n.seen=seen;n.rssi=r.r;}if(r.n&&!n.name)n.name=r.n;n.label=abbr(n.name,n.id,n.type);}},
+ tier(n){return n.s>.62?0:n.s>.35?1:2;},
+ hit(kind,s){for(const n of this.map.values()){if(!n.active||this.tier(n)!==kind)continue;
+  if(kind===0){n.kp=1;}else if(kind===1){const a=Math.random()*6.2832;n.jit=[Math.cos(a)*26*s,(Math.random()-.5)*20*s,Math.sin(a)*26*s];}else n.sh=1;}}};
+/* demo feed: a believable mix of named and anonymous signals that come and go */
+const DEMO_W=['NETGEAR42','Xfinity Mobile','ATT-5G-9A3F','TP-Link_Guest','SpectrumSetup-71','eero mesh','CenturyLink4471','DIRECT-roku-112','HP-Print-7C-LaserJet','Starbucks WiFi','Verizon_7KQ3PL','MOTOROLA-2F1C','Linksys00813','Cox WiFi','Tucson Public','Sonoran Desert Cafe'];
+const DEMO_B=['Pixel Buds Pro','JBL Flip 5','Tesla Model 3','Galaxy Watch6','Bose QC45','Ring Doorbell','Fitbit Charge 6','Apple TV','Tile','Echo Dot','','','','','','',''];
+const demo={pool:[],next:0,tick:0};
+function demoStep(now){if(now>demo.next){demo.next=now+900+Math.random()*2600;const b=Math.random()<.55;
+  const nm=b?DEMO_B[Math.random()*DEMO_B.length|0]:DEMO_W[Math.random()*DEMO_W.length|0];
+  demo.pool.push({i:(b?'b:':'w:')+Math.random().toString(16).slice(2,14),t:b?'b':'w',n:nm,r:-92+Math.random()*48,life:6000+Math.random()*50000,born:now});
+  if(demo.pool.length>70)demo.pool.shift();}
+ if(now-demo.tick>700){demo.tick=now;const out=[];for(const d of demo.pool){if(now-d.born>d.life)continue;d.r=Math.max(-97,Math.min(-35,d.r+(Math.random()-.5)*5));out.push({i:d.i,t:d.t,n:d.n,r:d.r,a:0});}
+  sigs.ingest(out,now);}}
+let liveT=0;
+function liveStep(now){if(now-liveT<800)return;liveT=now;let arr=[];try{arr=JSON.parse(String(NATIVE.readSignals()))||[];}catch(e){}sigs.ingest(arr,now);}
+window.__signalStatus=(state,msg)=>{sigs.status=msg||'';if(state==='error')note(msg,1);else note(msg);};
+
+/* ---------- HUD ---------- */
+const TABS=['source','react','terrain','motion','look'];
+const hexs=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
+function note(m,warn){S._note=m;S._warn=!!warn;const n=$('note');if(n){n.textContent=m;n.className='note'+(warn?' warn':'');}}
+function paint(){document.documentElement.style.setProperty('--volt',S.cA);
+ $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
+ const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
+ let h='';
+ if(S.tab==='source'){if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal']],'Scene');
+  h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
+  h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
+  h+=`<p class="note${S._warn?' warn':''}" id="note">${S._note||(LIVE?'Signal scans nearby Wi-Fi and Bluetooth. Android limits Wi-Fi scans to about one every 30 seconds unless Wi-Fi scan throttling is turned off in Developer options.':'Demo signals: the app version scans real Wi-Fi and Bluetooth around you. Drag to orbit, scroll or pinch to zoom.')}</p>`;
+  h+=seg('q',[[0,'Lite'],[1,'Mid'],[2,'Max']],'Terrain detail');
+  h+=`<div class="seg">${NATIVE?'':'<button id="fs">Fullscreen</button>'}<button id="reset">Reset controls</button></div><input type="file" id="file" accept="audio/*" hidden>`;
+  h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
+ if(S.tab==='react')h+=`<p class="note">Signal strength picks each node's band: the strongest pulse on the kick, mid-strength signals jump on the snare, faint ones shimmer on the hats.</p>`;
+ if(S.tab==='motion'){h+=`<p class="note">Turns spin the survey, braking and road vibration move you through the terrain. Flick to spin, pinch to zoom.</p>`;h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
+ if(S.tab==='look'){h+=`<div class="grp"><span class="lab">Palette</span><div class="seg">${Object.keys(PAL).map(k=>`<button data-pal="${k}">${k}</button>`).join('')}</div>
+  <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="Wi-Fi color"><input type="color" id="cB" value="${S.cB}" aria-label="Bluetooth color"><input type="color" id="cBg" value="${S.cBg}" aria-label="Background"><span class="lab">Wi-Fi / Bluetooth / ground</span></div></div>`;
+  h+=seg('side',[['left','Left'],['right','Right']],'Signal list side');}
+ for(const p of P)if(p[2]===S.tab)h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
+ $('body').innerHTML=h;}
+const fmt=(p,v)=>p[6]===1?String(Math.round(v)):Math.round((v-p[3])/(p[4]-p[3])*100)+'';
+$('tabs').addEventListener('click',e=>{const t=e.target.dataset.tab;if(t){S.tab=t;save();paint();}});
+$('body').addEventListener('input',e=>{const el=e.target;
+ if(el.dataset.p){const p=P.find(x=>x[0]===el.dataset.p);S[p[0]]=parseFloat(el.value);$('o_'+p[0]).textContent=fmt(p,S[p[0]]);}
+ else if(el.type==='color'){S[el.id]=el.value;if(el.id==='cA')document.documentElement.style.setProperty('--volt',S.cA);}
+ save();});
+$('body').addEventListener('change',e=>{if(e.target.id==='file')useFile(e.target.files[0]);});
+function goScene(v){if(v===S.scene||!SCENES[v])return;try{if(LIVE)NATIVE.stopSignals();}catch(x){}try{localStorage.setItem('slickScene',v);}catch(x){}location.replace(SCENES[v]);}
+$('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!el)return;
+ if(el.dataset.pal){[S.cA,S.cB,S.cBg]=PAL[el.dataset.pal];}
+ else if(el.id==='fs'){const d=document.documentElement;(document.fullscreenElement?document.exitFullscreen():d.requestFullscreen&&d.requestFullscreen()||Promise.reject()).catch(()=>note('Fullscreen is not available in this view.',1));return;}
+ else if(el.id==='reset'){for(const p of P)S[p[0]]=p[5];}
+ else if(el.id==='copyset'){
+  const code='SIG1.'+btoa(unescape(encodeURIComponent(JSON.stringify(lookOf()))));$('code').value=code;
+  Promise.resolve().then(()=>navigator.clipboard.writeText(code)).then(()=>note('Settings copied. Paste the code into Signal on your other device.'),()=>{$('code').select();note('Select and copy the code in the box.');});return;}
+ else if(el.id==='applyset'){try{const raw=$('code').value.trim();if(!raw.startsWith('SIG1.'))throw 0;applyLook(JSON.parse(decodeURIComponent(escape(atob(raw.slice(5))))));note('Look loaded.');}catch(x){note('That code could not be read. Signal codes start with SIG1.',1);}return;}
+ else if(el.dataset.set){const k=el.dataset.set;let v=el.dataset.val;
+  if(k==='scene'){goScene(v);return;}
+  if(k==='src'){if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
+   if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
+  if(k==='sound'){S.sound=v==='true';if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}
+  else if(k==='tinv')S.tinv=v==='true';else if(k==='q'){S.q=+v;resize();}else S[k]=v;}
+ else return;
+ save();paint();});
+paint();
+/* ---------- looks: one serializer for codes and presets ---------- */
+function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
+function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
+ for(const k of['cA','cB','cBg'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
+ for(const k of['side'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
+ if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
+ save();paint();}
+let presets=[null,null,null];try{const v=JSON.parse(localStorage.getItem('signal01p')||'null');if(Array.isArray(v))presets=v.slice(0,3);}catch(e){}
+const savePresets=()=>{try{localStorage.setItem('signal01p',JSON.stringify(presets));}catch(e){}};
+function paintSlots(){document.querySelectorAll('.slot').forEach(b=>{const p=presets[+b.dataset.slot],sw=b.querySelector('.sw');
+ sw.style.background=p?p.cA:'transparent';sw.style.borderColor=p?p.cA:'';b.title=p?'Tap to load, hold to overwrite':'Tap to save the current look';});}
+let toastT=0;function toast(m){const el=$('toast');el.textContent=m;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,1600);}
+/* hold gesture: a fill sweeps across the button; let go early and it counts as a tap */
+function holdable(el,ms,onHold,onTap){let tm=0,raf=0,done=false,active=false;
+ const reset=()=>{active=false;clearTimeout(tm);cancelAnimationFrame(raf);el.style.setProperty('--p',0);};
+ el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(x){}done=false;active=true;const t0=performance.now();
+  const step=()=>{if(!active)return;el.style.setProperty('--p',Math.min(1,(performance.now()-t0)/ms));raf=requestAnimationFrame(step);};step();
+  tm=setTimeout(()=>{done=true;reset();onHold();},ms);});
+ el.addEventListener('pointerup',()=>{const tap=active&&!done;reset();if(tap&&onTap)onTap();});
+ el.addEventListener('pointercancel',reset);el.addEventListener('contextmenu',e=>e.preventDefault());
+ el.addEventListener('click',e=>{if(e.detail===0)(onTap||onHold)();});}
+document.querySelectorAll('.slot').forEach(b=>{const i=+b.dataset.slot;
+ const store=()=>{presets[i]=lookOf();savePresets();paintSlots();toast('Saved to preset '+(i+1));};
+ holdable(b,600,store,()=>{if(presets[i]){applyLook(presets[i]);toast('Preset '+(i+1));}else store();});});
+paintSlots();
+const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
+function randomize(){
+ /* terrain, reactions and look; motion response and signal data stay as they are */
+ const keep=new Set(['bpm','look','mom','warp','cruise','tiltp']);
+ for(const p of P){if(keep.has(p[0])||p[6]===1)continue;S[p[0]]=+(p[3]+(p[4]-p[3])*(.1+.8*Math.random())).toFixed(3);}
+ S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
+ const h=Math.random()*360,gap=[0,40,150,180,200][Math.random()*5|0];
+ S.cA=hsl(h,90,70);S.cB=gap?hsl(h+gap,80,72):hsl(h,25,92);S.cBg=hsl(h+180,30,3+Math.random()*3);
+ save();paint();toast('Randomized');}
+holdable($('rand'),600,randomize,()=>toast('Hold to randomize'));
+
+/* ---------- in-app rotation lock (native only; ignores the phone's own lock) ---------- */
+const rl=$('rlock');
+function paintLock(){rl.setAttribute('aria-pressed',S.rlock?'true':'false');rl.querySelector('span').textContent=S.rlock?'Locked':'Auto';
+ rl.querySelector('#shackle').setAttribute('d',S.rlock?'M4 5.5V4a2 2 0 0 1 4 0v1.5':'M4 5.5V4a2 2 0 0 1 4 0');}
+if(NATIVE&&NATIVE.setOrientation){rl.hidden=false;paintLock();try{NATIVE.setOrientation(S.rlock||'auto');}catch(e){}
+ rl.addEventListener('click',()=>{try{if(S.rlock){S.rlock='';NATIVE.setOrientation('auto');toast('Rotation unlocked');}
+  else{S.rlock=String(NATIVE.currentOrientation());NATIVE.setOrientation(S.rlock);toast('Rotation locked');}}catch(e){}save();paintLock();});}
+/* keep a capture session alive across scene switches; otherwise start phone audio */
+if(NATIVE)setTimeout(()=>{let route='';try{route=String(NATIVE.read()).split(',')[5]||'';}catch(e){}
+ if(route==='capture')window.__slickStatus('cap','running','Capturing phone audio at full quality.');else{note('Starting phone audio...');NATIVE.start('vis');}},400);
+if(LIVE)setTimeout(()=>{try{NATIVE.startSignals();}catch(e){}},700);
+
+/* ---------- annotation layer: nodes, labels, signal list ---------- */
+const FONT_PX='"Silkscreen","JetBrains Mono",ui-monospace,monospace';
+const rgba=(h,a)=>{const[r,g,b]=hexs(h);return`rgba(${r*255|0},${g*255|0},${b*255|0},${Math.max(0,Math.min(1,a))})`;};
+function drawOverlay(now,dt){const c=cx;c.setTransform(ODPR,0,0,ODPR,0,0);c.clearRect(0,0,OW,OH);
+ const ns=S.nsize,glow=S.glow,list=[],ghosts=[];
+ for(const n of sigs.map.values()){
+  const age=now-n.seen,win=WIN[n.type];n.active=age<win;n.fade=n.active?1-Math.max(0,(age-win*.5)/(win*.5))*.6:0;
+  n.s=Math.max(0,Math.min(1,(n.rssi+95)/60));
+  /* where it lives: bearing from its id, distance from strength, Wi-Fi floats above Bluetooth */
+  const R=n.active?70+(1-n.s)*300:420+n.hy*160,y=n.active?(n.type==='w'?85+n.hy*70:28+n.hy*45):12+n.hy*20;
+  const tg=[Math.cos(n.ang)*R,y,Math.sin(n.ang)*R];
+  if(!n.pos)n.pos=[tg[0]*1.6,tg[1]+120,tg[2]*1.6];
+  for(let i=0;i<3;i++){n.vel[i]+=((tg[i]-n.pos[i])*1.4-n.vel[i]*2.2)*dt;n.jit[i]*=Math.exp(-dt*5);}
+  n.kp*=Math.exp(-dt*5);n.sh*=Math.exp(-dt*9);
+  if(n.active)list.push(n);else ghosts.push(n);}
+ /* light repulsion so stations never stack on each other; kick-tier nodes shove harder */
+ for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){const a=list[i],b=list[j];const dx=a.pos[0]-b.pos[0],dz=a.pos[2]-b.pos[2],dy=a.pos[1]-b.pos[1];const d2=dx*dx+dy*dy+dz*dz;
+  if(d2<3600&&d2>.01){const d=Math.sqrt(d2),f=(60-d)*(2+18*(a.kp+b.kp))/d*dt;a.vel[0]+=dx*f;a.vel[2]+=dz*f;b.vel[0]-=dx*f;b.vel[2]-=dz*f;}}
+ for(const n of sigs.map.values())for(let i=0;i<3;i++)n.pos[i]+=n.vel[i]*dt;
+ /* forget very old ghosts */
+ if(ghosts.length>160){ghosts.sort((a,b)=>a.seen-b.seen);for(const g of ghosts.slice(0,ghosts.length-160))sigs.map.delete(g.id);}
+ const draw=[];for(const n of sigs.map.values()){const P3=[n.pos[0]+n.jit[0],n.pos[1]+n.jit[1],n.pos[2]+n.jit[2]];const sp=proj(...P3);if(!sp)continue;n.sp=sp;n.bp=proj(P3[0],0,P3[2]);draw.push(n);}
+ draw.sort((a,b)=>b.sp[2]-a.sp[2]);
+ c.lineWidth=1;c.textBaseline='middle';
+ for(const n of draw){const col=n.type==='w'?S.cA:S.cB,k=Math.min(2.2,Math.max(.45,640/n.sp[2]));const[x,y]=n.sp;
+  if(!n.active){const a=S.ghost*.5*Math.min(1,(now-n.seen-WIN[n.type])/3000+.2);if(a<.01)continue;const z=3*k*ns;c.fillStyle=rgba(col,a);c.fillRect(x-z/2,y-z/2,z,z);continue;}
+  const fresh=Math.max(0,1-(now-n.first)/1600),a=n.fade*(.55+.45*k/2.2)+n.sh*.4;
+  if(n.bp){c.strokeStyle=rgba(col,a*.35);c.beginPath();c.moveTo(x,y);c.lineTo(n.bp[0],n.bp[1]);c.stroke();
+   c.beginPath();c.ellipse(n.bp[0],n.bp[1],7*k*ns,2.6*k*ns,0,0,6.2832);c.stroke();}
+  const z=(9+6*n.kp)*k*ns;c.strokeStyle=rgba(col,a);c.shadowColor=col;c.shadowBlur=6*glow*(1+n.kp);
+  c.strokeRect(x-z/2,y-z/2,z,z);c.fillStyle=rgba(col,a);c.fillRect(x-1.5*k,y-1.5*k,3*k,3*k);
+  if(fresh>0){const q=z*(1+fresh*2.5),o=q/2,l=q*.28;c.strokeStyle=rgba(col,fresh);c.beginPath();
+   for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){c.moveTo(x+sx*o,y+sy*o-sy*l);c.lineTo(x+sx*o,y+sy*o);c.lineTo(x+sx*o-sx*l,y+sy*o);}c.stroke();}
+  if(k>.6||n.s>.5){c.font=`${Math.round(8*ns*Math.min(1.25,k))}px ${FONT_PX}`;c.fillStyle=rgba(col,a);c.shadowBlur=8*glow;
+   c.fillText(n.label,x+z/2+6,y-3);c.shadowBlur=0;c.fillStyle=rgba(col,a*.55);c.font=`${Math.round(6*ns*Math.min(1.25,k))+1}px ${FONT_PX}`;c.fillText(Math.round(n.rssi)+'DBM',x+z/2+6,y+7);}
+  c.shadowBlur=0;}
+ /* the signal list: strongest first, entries glide into place and nudge with their band */
+ list.sort((a,b)=>b.s-a.s);
+ const left=S.side==='left',lw=Math.min(200,OW*.3),rowH=Math.round(15*ns),top=Math.round(OH*.22),maxRows=Math.max(3,Math.floor(OH*.56/rowH));
+ const lx=left?18:OW-18-lw;
+ c.font=`8px ${FONT_PX}`;const nw=list.filter(n=>n.type==='w').length,nb=list.length-nw;
+ c.fillStyle=rgba(S.cA,.8);c.shadowColor=S.cA;c.shadowBlur=6*glow;c.fillText(`SIGNALS  W ${nw}  B ${nb}`,lx,top-16);c.shadowBlur=0;
+ c.strokeStyle=rgba(S.cA,.35);c.beginPath();c.moveTo(lx,top-8);c.lineTo(lx+lw,top-8);c.stroke();
+ if(sigs.status&&!list.length){c.fillStyle=rgba(S.cA,.6);c.fillText(sigs.status.slice(0,40).toUpperCase(),lx,top+4);}
+ list.forEach((n,i)=>{if(i>=maxRows){n.ly=-1;return;}const ty=top+i*rowH+rowH/2;n.ly=n.ly<0?ty:n.ly+(ty-n.ly)*Math.min(1,dt*7);
+  n.la=Math.min(1,n.la+dt*3);if(sigs.tier(n)===0)n.lx=n.kp*6;else if(sigs.tier(n)===1)n.lx=(n.jit[0]/26)*4;else n.lx=0;
+  const col=n.type==='w'?S.cA:S.cB,a=n.la*n.fade,ex=lx+(left?n.lx:-n.lx),y=n.ly;
+  c.fillStyle=rgba(col,a);c.fillRect(ex,y-5,10,10);c.fillStyle=S.cBg;c.font=`8px ${FONT_PX}`;c.fillText(n.type==='w'?'W':'B',ex+2,y+.5);
+  c.fillStyle=rgba(col,a);c.shadowColor=col;c.shadowBlur=7*glow;c.fillText(n.label,ex+16,y+.5);c.shadowBlur=0;
+  const bars=Math.round(n.s*6);for(let b=0;b<6;b++){c.fillStyle=rgba(col,a*(b<bars?.9:.18));c.fillRect(ex+lw-58+b*5,y-3,3,6);}
+  c.fillStyle=rgba(col,a*.6);c.fillText(String(Math.round(n.rssi)),ex+lw-22,y+.5);
+  /* leader line: out of the list, elbow, then straight to its station */
+  if(n.sp&&n.sp[2]>1){const ax=left?ex+lw+4:ex-4,bx=ax+(left?18:-18);c.strokeStyle=rgba(col,a*.32);c.beginPath();c.moveTo(ax,y);c.lineTo(bx,y);c.lineTo(n.sp[0],n.sp[1]);c.stroke();}});
+ if(list.length>maxRows){c.fillStyle=rgba(S.cA,.5);c.fillText(`+${list.length-maxRows} MORE`,lx,top+maxRows*rowH+8);}
+ /* plate caption */
+ c.font=`8px ${FONT_PX}`;c.textAlign='center';c.fillStyle=rgba(S.cB,.42);
+ c.fillText(`PRELIMINARY SURVEY OF AMBIENT SIGNAL STRUCTURES   PLATE 03   W${nw} B${nb}   SCALE 1:4800`,OW/2,OH-14);c.textAlign='left';
+ $('rSim').textContent=`${nw}W ${nb}B`;}
+
+/* ---------- frame loop ---------- */
+let last=performance.now()/1000,fpsS=60,fpsT=0,moveT=0,trav=0,tspeed=0,yawPrev=0;
+try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
+addEventListener('resize',resize);resize();
+function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.min(.05,Math.max(.001,t-last));last=t;
+ fpsS+=(1/fdt-fpsS)*.05;if(t-fpsT>.5){fpsT=t;$('rFps').textContent=Math.round(fpsS);}
+ if(cv.clientWidth*cv.clientHeight===0)return;resize();
+ seq();analyse(t);flash*=Math.pow(.02,fdt);
+ const now=performance.now();if(LIVE)liveStep(now);else demoStep(now);
+ const sg=S.tinv?-1:1,D2R=Math.PI/180,mom=S.mom;
+ if(mot.gyro){const gy=-mot.rot[0]*D2R*S.look*sg*1.2;cam.yawV+=gy*fdt*(1-mom);if(!ptr.on)cam.spin+=gy*fdt*mom*1.4;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.6;}
+ const gr=tiltSeen?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
+ const tilt=[(gr[0]-gBase[0])*S.tiltp,(gr[1]-gBase[1])*S.tiltp];
+ cam.yaw+=cam.yawV;cam.pitch+=cam.pitchV;cam.yawV=0;cam.pitchV=0;cam.yaw*=Math.exp(-fdt*.35);cam.pitch*=Math.exp(-fdt*.5);
+ if(!ptr.on&&cam.spin!==0){const kl=.035+(1-mom)*3,kc=.012+(1-mom)*.6,sgn=Math.sign(cam.spin);cam.spin-=(kl*cam.spin+sgn*kc)*fdt;if(Math.sign(cam.spin)!==sgn)cam.spin=0;}
+ cam.orbit+=.012*fdt+cam.spin*fdt+cam.drag;cam.drag=0;
+ const yaw=cam.orbit+cam.yaw+tilt[0]*.8,pitch=Math.max(.06,Math.min(1.35,.42+cam.pitch-tilt[1]*.5));
+ const T=[0,40,0],eye=[T[0]+cam.dist*Math.sin(yaw)*Math.cos(pitch),T[1]+cam.dist*Math.sin(pitch),T[2]+cam.dist*Math.cos(yaw)*Math.cos(pitch)];
+ VPm=mul(persp(50*D2R,ASP,5,6000),lookAt(eye,T));
+ /* moving through the survey: road vibration plus Cruise */
+ const road=Math.max(0,(mot.energy-.08)*2.2)*S.warp;tspeed+=(Math.min(1.6,road+S.cruise)-tspeed)*Math.min(1,fdt*1.2);trav+=tspeed*520*fdt;
+ if(t-moveT>.25){moveT=t;$('rMove').textContent=mot.energy.toFixed(2);}
+ fx.pR+=900*fdt;fx.pA*=Math.exp(-fdt*1.6);fx.tr*=Math.exp(-fdt*1.8);fx.hat*=Math.exp(-fdt*9);
+ const q=QS[S.q],bg=hexs(S.cBg),ca=hexs(S.cA),cb=hexs(S.cB),mixc=ca.map((v,i)=>v*.65+cb[i]*.35),B=S.lineb*(1+flash*.8);
+ gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,RW,RH);gl.clearColor(bg[0],bg[1],bg[2],1);gl.clear(gl.COLOR_BUFFER_BIT);
+ gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.bindVertexArray(VAO0);
+ const com={uVP:VPm,uEye:eye,uTrav:trav,uTime:t,uPR:fx.pR,uPA:fx.pA,uFog:S.fog};
+ if(S.grid>.01){use(PR.grid,{...com,uN:q.grid,uC:mixc,uB:.11*S.grid*B});gl.drawArrays(gl.LINES,0,q.grid*2*2);
+  use(PR.dot,{...com,uN:q.grid,uC:mixc,uB:.55*S.grid*B,uHat:fx.hat,uSeed:fx.seed,uPx:RH/700});gl.drawArrays(gl.POINTS,0,q.grid*q.grid);}
+ if(S.lattice>.01){use(PR.lat,{...com,uRot:t*.01,uC:cb,uB:.16*S.lattice*B});gl.bindVertexArray(LAT.vao);gl.drawArrays(gl.LINES,0,LAT.n);gl.bindVertexArray(VAO0);}
+ use(PR.ter,{...com,uRelief:S.relief,uScale:S.tscale,uBass:lvl[0],uTr:S.trace*(.3+fx.tr),uRows:q.rows,uCols:q.cols,uC:mixc,uB:.55*B});
+ gl.drawArrays(gl.LINES,0,q.rows*(q.cols-1)*2);
+ gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);use(PR.fin,{uGrain:S.grain,uTime:t});gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.BLEND);
+ drawOverlay(now,fdt);}
+requestAnimationFrame(frame);
+})();
+</script>

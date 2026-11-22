@@ -127,7 +127,7 @@ const save=()=>{try{localStorage.setItem('slick01',JSON.stringify(S));}catch(e){
 const $=id=>document.getElementById(id);
 const NATIVE=window.SlickNative||null;
 let SCENE='slick';try{SCENE=localStorage.getItem('slickScene')||'slick';}catch(e){}
-if(NATIVE&&SCENE==='hyper'){location.replace('hyper.html');return;}
+if(NATIVE&&(SCENE==='hyper'||SCENE==='signal')){location.replace(SCENE+'.html');return;}
 
 /* ---------- GL ---------- */
 const cv=$('gl');
@@ -328,7 +328,7 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
  const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
  let h='';
- if(S.tab==='source'){if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper']],'Scene');
+ if(S.tab==='source'){if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal']],'Scene');
   h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
   h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
   h+=`<p class="note${S._warn?' warn':''}" id="note">${S._note||(NATIVE?'Phone audio hears whatever is playing, Spotify included. Capture is the full-quality route: Android asks each session, choose Entire screen.':'The demo beat plays a 174 BPM jungle pattern. Set it audible to route it through the real hit detection.')}</p>`;
@@ -365,7 +365,7 @@ $('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!e
   Promise.resolve().then(()=>navigator.clipboard.writeText(code)).then(()=>note('Settings copied. Paste the code into Slick on your other device.'),()=>{$('code').select();note('Select and copy the code in the box.');});return;}
  else if(el.id==='applyset'){try{const raw=$('code').value.trim();if(!raw.startsWith('SLK1.'))throw 0;applyLook(JSON.parse(decodeURIComponent(escape(atob(raw.slice(5))))));note('Look loaded.');}catch(x){note('That code could not be read. Copy it again from the other device.',1);}return;}
  else if(el.dataset.set){const k=el.dataset.set;let v=el.dataset.val;
-  if(k==='scene'){if(v==='hyper'){try{localStorage.setItem('slickScene','hyper');}catch(x){}location.replace('hyper.html');}return;}
+  if(k==='scene'){if(v!=='slick'&&{hyper:1,signal:1}[v]){try{localStorage.setItem('slickScene',v);}catch(x){}location.replace(v+'.html');}return;}
   if(k==='src'){if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
    if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
   if(k==='sound'){S.sound=v==='true';if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}

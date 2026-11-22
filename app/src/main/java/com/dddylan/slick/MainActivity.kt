@@ -40,6 +40,9 @@ class MainActivity : Activity() {
     private var micGranted: (() -> Unit)? = null
     private var micDenied: (() -> Unit)? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private lateinit var signals: SignalScanner
+    private var signalsWanted = false
+    private var permGranted: ((Map<String, Boolean>) -> Unit)? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +64,11 @@ class MainActivity : Activity() {
         setContentView(web)
         hideSystemBars()
 
+        signals = SignalScanner(this) { state, message ->
+            runOnUiThread {
+                web.evaluateJavascript("window.__signalStatus&&__signalStatus(${JSONObject.quote(state)},${JSONObject.quote(message)})", null)
+            }
+        }
         AudioEngine.listener = { route, state, message ->
             runOnUiThread {
                 web.evaluateJavascript(
@@ -91,6 +99,10 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun currentOrientation(): String = currentOrientationName()
+
+        @JavascriptInterface fun startSignals() = runOnUiThread { startSignalScan() }
+        @JavascriptInterface fun stopSignals() = runOnUiThread { signalsWanted = false; signals.stop() }
+        @JavascriptInterface fun readSignals(): String = signals.read()
     }
 
     private fun startVisualizer() {
@@ -126,6 +138,26 @@ class MainActivity : Activity() {
         )
     }
 
+    /** Wi-Fi results need location; Bluetooth LE scanning needs Nearby devices on Android 12+, location before that. */
+    private fun startSignalScan() {
+        signalsWanted = true
+        val wanted = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= 31) wanted += Manifest.permission.BLUETOOTH_SCAN
+        withPerms(wanted.toTypedArray()) { got ->
+            if (!signalsWanted) return@withPerms
+            val loc = got[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val ble = if (Build.VERSION.SDK_INT >= 31) got[Manifest.permission.BLUETOOTH_SCAN] == true else loc
+            signals.start(loc, ble)
+        }
+    }
+
+    private fun withPerms(perms: Array<String>, done: (Map<String, Boolean>) -> Unit) {
+        val missing = perms.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (missing.isEmpty()) { done(perms.associateWith { true }); return }
+        permGranted = { res -> done(perms.associateWith { p -> res[p] ?: (checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED) }) }
+        requestPermissions(missing.toTypedArray(), REQ_PERMS)
+    }
+
     private fun stopAll() {
         vis?.stop()
         vis = null
@@ -147,6 +179,12 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_PERMS) {
+            val cb = permGranted
+            permGranted = null
+            cb?.invoke(permissions.indices.associate { permissions[it] to (grantResults.getOrNull(it) == PackageManager.PERMISSION_GRANTED) })
+            return
+        }
         if (requestCode != REQ_MIC) return
         val ok = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
         val g = micGranted
@@ -186,6 +224,12 @@ class MainActivity : Activity() {
     // ---------- WebView plumbing ----------
 
     private inner class AssetClient : WebViewClient() {
+        // A scene switch loads a new page; scanning only runs while the Signal scene asks for it.
+        override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+            signalsWanted = false
+            signals.stop()
+        }
+
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             val url = request.url
             if (url.host != HOST) return null
@@ -304,6 +348,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        if (signalsWanted && !signals.running) startSignalScan()
         if (resumeVisOnStart) {
             resumeVisOnStart = false
             startVisualizer()
@@ -321,6 +366,7 @@ class MainActivity : Activity() {
     }
 
     override fun onStop() {
+        if (signals.running) signals.stop()   // signalsWanted stays set, so returning to the app resumes scanning
         // Release the output-mix tap while Slick is out of sight; capture keeps running in its service.
         if (vis != null) {
             vis?.stop()
@@ -332,6 +378,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         AudioEngine.listener = null
+        signals.stop()
         if (isFinishing) stopAll()
         web.destroy()
         super.onDestroy()
@@ -342,5 +389,6 @@ class MainActivity : Activity() {
         const val REQ_MIC = 1
         const val REQ_PROJECTION = 2
         const val REQ_FILE = 3
+        const val REQ_PERMS = 4
     }
 }

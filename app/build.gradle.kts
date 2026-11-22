@@ -11,8 +11,8 @@ android {
         applicationId = "com.dddylan.slick"
         minSdk = 29          // Android 10: needed for playback capture
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.7.0"
+        versionCode = 9
+        versionName = "0.8.0"
     }
 
     // A fixed debug key checked into the repo, so every new build installs over the last one.
