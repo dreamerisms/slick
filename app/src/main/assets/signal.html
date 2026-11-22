@@ -550,7 +550,7 @@ function drawOverlay(now,dt){const c=cx;c.setTransform(ODPR,0,0,ODPR,0,0);c.clea
  if(list.length>maxRows){c.fillStyle=rgba(CA,.5);c.fillText(`+${list.length-maxRows} MORE`,lx,top+maxRows*rowH+8);}
  /* plate caption */
  c.font=`8px ${FONT_PX}`;c.textAlign='center';c.fillStyle=rgba(CB,.42);
- c.fillText(`PRELIMINARY SURVEY OF AMBIENT SIGNAL STRUCTURES   PLATE 03   W${nw} B${nb}   SCALE 1:4800`,OW/2,OH-(window.__npShown?62:14));c.textAlign='left';
+ c.fillText(`PRELIMINARY SURVEY OF AMBIENT SIGNAL STRUCTURES   PLATE 03   W${nw} B${nb}   SCALE 1:4800`,OW/2,OH-(window.__npShown?(window.__npH||52)+16:14));c.textAlign='left';
  $('rSim').textContent=`${nw}W ${nb}B`;}
 
 /* ---------- now playing: the phone's active media session (Spotify or any player) ---------- */
@@ -561,14 +561,17 @@ const IC={prev:'<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
  play:'<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z"/></svg>',
  pause:'<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="2.5" y="2" width="2.4" height="8"/><rect x="7.1" y="2" width="2.4" height="8"/></svg>'};
 let npPlaying=false,npArt='';
-function npPoll(){if(!npOn)return;const el=$('np');if(!S.np){el.hidden=true;window.__npShown=false;return;}
+/* tell the HUD how tall the bar is so the menu (portrait) or the readouts (landscape) can make room */
+function npLayout(on){const r=document.documentElement;r.classList.toggle('np-on',on);window.__npShown=on;
+ if(on){const h=$('np').offsetHeight+10;r.style.setProperty('--npH',h+'px');window.__npH=h;}}
+function npPoll(){if(!npOn)return;const el=$('np');if(!S.np){el.hidden=true;npLayout(false);return;}
  let d;try{d=JSON.parse(String(NATIVE.media()));}catch(e){return;}
- if(!d.access){el.hidden=false;el.classList.add('ask');$('npT').textContent='Show what’s playing';$('npA').textContent='Tap to allow notification access';window.__npShown=true;return;}
- el.classList.remove('ask');if(!d.title){el.hidden=true;window.__npShown=false;return;}
- el.hidden=false;window.__npShown=true;$('npT').textContent=d.title;$('npA').textContent=d.artist||d.app||'';
+ if(!d.access){el.hidden=false;el.classList.add('ask');$('npT').textContent='Show what’s playing';$('npA').textContent='Tap to allow notification access';npLayout(true);return;}
+ el.classList.remove('ask');if(!d.title){el.hidden=true;npLayout(false);return;}
+ el.hidden=false;$('npT').textContent=d.title;$('npA').textContent=d.artist||d.app||'';
  if(d.art!==npArt){npArt=d.art||'';const im=$('npI');im.hidden=!npArt;if(npArt)im.src=npArt;}
  npPlaying=!!d.playing;$('npP').innerHTML=npPlaying?IC.pause:IC.play;$('npP').setAttribute('aria-label',npPlaying?'Pause':'Play');
- const f=d.dur>0?Math.min(1,(d.pos+(npPlaying?1000:0))/d.dur):0;$('npBar').style.width=(f*100).toFixed(2)+'%';}
+ const f=d.dur>0?Math.min(1,(d.pos+(npPlaying?1000:0))/d.dur):0;$('npBar').style.width=(f*100).toFixed(2)+'%';npLayout(true);}
 if(npOn){const st=document.createElement('style');st.textContent=`.np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;max-width:min(430px,calc(100% - 32px));padding:5px 6px 5px 5px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);z-index:4;pointer-events:auto}
 .np img{width:30px;height:30px;object-fit:cover;flex:none;display:block}
 .np .t{min-width:0;display:flex;flex-direction:column;gap:3px;padding-right:2px}
@@ -576,7 +579,14 @@ if(npOn){const st=document.createElement('style');st.textContent=`.np{position:f
 .np .t b{font-weight:700}.np .t span{color:var(--dim)}
 .np .c{display:flex;flex:none}.np .c button{width:32px;height:30px;display:grid;place-items:center;color:var(--fg)}
 .np .c svg{width:11px;height:11px}.np .bar{position:absolute;left:0;bottom:-1px;height:1px;background:var(--volt);width:0;transition:width 1s linear}
-.np.ask{cursor:pointer}.np.ask .c,.np.ask img{display:none}`;document.head.appendChild(st);
+.np.ask{cursor:pointer}.np.ask .c,.np.ask img{display:none}
+@media (min-aspect-ratio:1/1){
+ #hud:not([hidden])~.np{left:max(16px,env(safe-area-inset-left,0px));transform:none;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:min(430px,calc(100% - min(340px,48%) - 48px))}
+ .np-on .hud .frame{padding-bottom:var(--npH,0px)}}
+@media (max-aspect-ratio:1/1){
+ .np{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;max-width:none}
+ .np .t{flex:1}.np .t b,.np .t span{max-width:none}
+ .np-on .hud{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px) + var(--npH,0px))}}`;document.head.appendChild(st);
  document.body.insertAdjacentHTML('beforeend',`<div class="np" id="np" hidden><img id="npI" alt="" hidden><div class="t"><b id="npT"></b><span id="npA"></span></div><div class="c"><button id="npB" aria-label="Previous track">${IC.prev}</button><button id="npP" aria-label="Play">${IC.play}</button><button id="npN" aria-label="Next track">${IC.next}</button></div><i class="bar" id="npBar"></i></div>`);
  const cmd=c=>{try{NATIVE.mediaCmd(c);}catch(e){}setTimeout(npPoll,250);};
  $('npB').addEventListener('click',e=>{e.stopPropagation();cmd('prev');});$('npN').addEventListener('click',e=>{e.stopPropagation();cmd('next');});
