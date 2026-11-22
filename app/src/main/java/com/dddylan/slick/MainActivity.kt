@@ -3,11 +3,21 @@ package com.dddylan.slick
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
+import android.os.SystemClock
+import android.provider.Settings
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -43,6 +53,9 @@ class MainActivity : Activity() {
     private lateinit var signals: SignalScanner
     private var signalsWanted = false
     private var permGranted: ((Map<String, Boolean>) -> Unit)? = null
+    private var mediaCtl: MediaController? = null
+    private var artKey: String? = null
+    private var artData = ""
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,6 +116,12 @@ class MainActivity : Activity() {
         @JavascriptInterface fun startSignals() = runOnUiThread { startSignalScan() }
         @JavascriptInterface fun stopSignals() = runOnUiThread { signalsWanted = false; signals.stop() }
         @JavascriptInterface fun readSignals(): String = signals.read()
+
+        @JavascriptInterface fun media(): String = mediaJson()
+        @JavascriptInterface fun mediaCmd(cmd: String) = runOnUiThread { mediaCommand(cmd) }
+        @JavascriptInterface fun openMediaAccess() = runOnUiThread {
+            try { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: Exception) {}
+        }
     }
 
     private fun startVisualizer() {
@@ -156,6 +175,66 @@ class MainActivity : Activity() {
         if (missing.isEmpty()) { done(perms.associateWith { true }); return }
         permGranted = { res -> done(perms.associateWith { p -> res[p] ?: (checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED) }) }
         requestPermissions(missing.toTypedArray(), REQ_PERMS)
+    }
+
+    // ---------- now playing ----------
+
+    private fun hasMediaAccess(): Boolean {
+        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false
+        return enabled.contains(ComponentName(this, MediaListener::class.java).flattenToString())
+    }
+
+    /** The playing session if there is one, otherwise the most recent. */
+    private fun pickController(): MediaController? {
+        if (!hasMediaAccess()) return null
+        return try {
+            val list = getSystemService(MediaSessionManager::class.java)
+                .getActiveSessions(ComponentName(this, MediaListener::class.java))
+            list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: list.firstOrNull()
+        } catch (_: SecurityException) { null }
+    }
+
+    private fun mediaJson(): String {
+        val o = JSONObject().put("access", hasMediaAccess())
+        val c = pickController() ?: return o.toString()
+        mediaCtl = c
+        val md = c.metadata
+        val st = c.playbackState
+        val title = md?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty()
+        val artist = (md?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)).orEmpty()
+        val playing = st?.state == PlaybackState.STATE_PLAYING
+        var pos = st?.position ?: 0L
+        if (playing && st != null && st.lastPositionUpdateTime > 0) {
+            pos += ((SystemClock.elapsedRealtime() - st.lastPositionUpdateTime) * st.playbackSpeed).toLong()
+        }
+        val key = title + "|" + artist
+        if (key != artKey) {
+            artKey = key
+            val bmp = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            artData = bmp?.let { encodeArt(it) } ?: ""
+        }
+        val app = try { packageManager.getApplicationLabel(packageManager.getApplicationInfo(c.packageName, 0)).toString() } catch (_: Exception) { c.packageName }
+        return o.put("title", title).put("artist", artist).put("app", app).put("playing", playing)
+            .put("pos", pos).put("dur", md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L).put("art", artData).toString()
+    }
+
+    /** Small JPEG data URL so the cover can sit in the bar without a file. */
+    private fun encodeArt(b: Bitmap): String {
+        val side = 96
+        val scaled = Bitmap.createScaledBitmap(b, side, side * b.height / maxOf(1, b.width), true)
+        val out = ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, 82, out)
+        return "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+    }
+
+    private fun mediaCommand(cmd: String) {
+        val t = (mediaCtl ?: pickController())?.transportControls ?: return
+        when (cmd) {
+            "play" -> t.play()
+            "pause" -> t.pause()
+            "next" -> t.skipToNext()
+            "prev" -> t.skipToPrevious()
+        }
     }
 
     private fun stopAll() {

@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Nothing is stored or sent anywhere: the page polls read() and the list lives in memory only.
  */
 class SignalScanner(private val ctx: Context, private val status: (String, String) -> Unit) {
-    private class Sig(val id: String, val type: String, var name: String, var rssi: Int, var seen: Long)
+    private class Sig(val id: String, val type: String, var name: String, var rssi: Int, var seen: Long, var freq: Int = 0)
 
     private val map = ConcurrentHashMap<String, Sig>()
     private val handler = Handler(Looper.getMainLooper())
@@ -103,7 +103,7 @@ class SignalScanner(private val ctx: Context, private val status: (String, Strin
             val s = it.next()
             val age = now - s.seen
             if (age > 120_000) { it.remove(); continue }
-            out.put(JSONObject().put("i", s.id).put("t", s.type).put("n", s.name).put("r", s.rssi).put("a", age))
+            out.put(JSONObject().put("i", s.id).put("t", s.type).put("n", s.name).put("r", s.rssi).put("a", age).put("f", s.freq))
         }
         return out.toString()
     }
@@ -119,7 +119,7 @@ class SignalScanner(private val ctx: Context, private val status: (String, Strin
             @Suppress("DEPRECATION") val ssid = r.SSID?.trim('"').orEmpty()
             val id = "w:" + r.BSSID
             val s = map[id]
-            if (s == null) map[id] = Sig(id, "w", ssid, r.level, seen)
+            if (s == null) map[id] = Sig(id, "w", ssid, r.level, seen, r.frequency)
             else if (seen >= s.seen) { s.rssi = r.level; s.seen = seen; if (ssid.isNotEmpty()) s.name = ssid }
         }
     }

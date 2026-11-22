@@ -38,6 +38,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Lets Android share what's playing (title, artist, controls) once the user grants notification access -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:label="Slick now playing"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".CaptureService"
             android:exported="false"
