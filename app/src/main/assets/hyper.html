@@ -28,10 +28,10 @@ html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);font
 .hits i{width:9px;height:9px;border:1px solid var(--fg);opacity:.35}
 .hits i.on{background:var(--volt);border-color:var(--volt);opacity:1}
 .panel{pointer-events:auto;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.tabs{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line)}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border-bottom:1px solid var(--line)}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:.14em;text-transform:uppercase}
 button:focus-visible,input:focus-visible,select:focus-visible,label.btn:focus-within{outline:1px solid var(--volt);outline-offset:1px}
-.tabs button{padding:11px 0;color:var(--dim);font-size:9px;letter-spacing:.06em}
+.tabs button{padding:11px 0;color:var(--dim);font-size:8.5px;letter-spacing:.02em}
 .tabs button[aria-selected="true"]{color:var(--ink);background:var(--volt);font-weight:700}
 .body{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0}
 .row{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
@@ -115,6 +115,7 @@ const P=[
  ['bloom','Bloom','look',0,2,.5],['bloomR','Bloom radius','look',.3,2,1],
  ['bright','Brightness','look',.3,2,1],['cycle','Color cycle','look',0,1,0],
  ['tlen','Trail length','look',.5,.97,.86],['tgap','Echo spacing','look',1,8,3,1],['trz','Trail drift','look',-1,1,.25],
+ ['hstr','Depth strength','track',0,2,1],['hsmooth','Smoothing','track',0,1,.6],['gspin','Gesture spin','track',0,2,1],
  ['tsize','Size','text',.08,.6,.3],['topac','Opacity','text',0,1,.92],['tdrift','Drift / looseness','text',0,1,.3]
 ];
 const PAL={HYPER:['#da1fff','#a6ff00','#17131f'],ACID:['#7dff2a','#00c8a0','#050a07'],MAGMA:['#ff5a1e','#ffd21e','#140604'],UV:['#b44cff','#00f0ff','#07051a'],ICE:['#e8f4ff','#3a7bff','#03060e']};
@@ -127,6 +128,8 @@ S.src='demo';S.sound=false;S.scene='hyper';
 const save=()=>{try{localStorage.setItem('hyper01',JSON.stringify(S));}catch(e){}};
 const $=id=>document.getElementById(id);
 const NATIVE=window.SlickNative||null;
+const TRACK_HEAD=true;
+for(const[k,v]of[['thead','off'],['thand','off'],['tprev','off'],['tflipx','off'],['tflipy','off'],['tturn','0']])if(S[k]===undefined)S[k]=v;
 try{localStorage.setItem('slickScene','hyper');}catch(e){}
 
 /* ---------- GL ---------- */
@@ -368,7 +371,7 @@ const up=()=>{if(!ptr.on)return;ptr.on=false;
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{ptr.on=false;});
 
 /* ---------- HUD, generated from the manifest ---------- */
-const TABS=['source','react','field','motion','look','text'];
+const TABS=['source','react','field','motion','look','text','track'];
 const hexs=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
 function shiftH(hx,dh){const[r,g,b]=hexs(hx),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;let h=0,s=0;
  if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);h=(mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4)*60;}return[h+dh,s*100,l*100];}
@@ -397,6 +400,7 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=`<div class="grp"><label class="lab" for="str">Words</label><input type="text" id="str" maxlength="28" value="${S.str.replace(/"/g,'&quot;')}"></div>`;
   h+=seg('font',Object.keys(FONTS).map(k=>[k,k]),'Typeface');h+=seg('blend',BLENDS.map(b=>[b,b]),'Blend');
   h+=`<div class="cols"><input type="color" id="cT" value="${S.cT}" aria-label="Text color"><span class="lab">Text color</span></div>`;}
+ if(S.tab==='track')h+=trackUI(seg);
  for(const p of P)if(p[2]===S.tab)h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
  $('body').innerHTML=h;}
 const fmt=(p,v)=>p[6]===1?String(Math.round(v)):Math.round((v-p[3])/(p[4]-p[3])*100)+'';
@@ -455,7 +459,7 @@ paintSlots();
 const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
 function randomize(){
  /* the field, its reactions and its look; text, audio source and motion response stay as they are */
- const keep=new Set(['bpm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright','mom','cycle','orbit']);
+ const keep=new Set(['bpm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright','mom','cycle','orbit','hstr','hsmooth','gspin']);
  for(const p of P){if(keep.has(p[0])||p[6]===1)continue;const r=.1+.8*Math.random();S[p[0]]=+(p[3]+(p[4]-p[3])*r).toFixed(5);}
  S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
  S.curl=+(.0004+Math.random()*.0016).toFixed(5);S.psize=3+Math.random()*7;S.die=Math.random()<.4?0:+(Math.random()*.008).toFixed(4);
@@ -495,13 +499,13 @@ function npPoll(){if(!npOn)return;const el=$('np');if(!S.np){el.hidden=true;npLa
  if(d.art!==npArt){npArt=d.art||'';const im=$('npI');im.hidden=!npArt;if(npArt)im.src=npArt;}
  npPlaying=!!d.playing;$('npP').innerHTML=npPlaying?IC.pause:IC.play;$('npP').setAttribute('aria-label',npPlaying?'Pause':'Play');
  const f=d.dur>0?Math.min(1,(d.pos+(npPlaying?1000:0))/d.dur):0;$('npBar').style.width=(f*100).toFixed(2)+'%';npLayout(true);}
-if(npOn){const st=document.createElement('style');st.textContent=`.np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;max-width:min(430px,calc(100% - 32px));padding:5px 6px 5px 5px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);z-index:4;pointer-events:auto}
-.np img{width:30px;height:30px;object-fit:cover;flex:none;display:block}
+if(npOn){const st=document.createElement('style');st.textContent=`.np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;max-width:min(430px,calc(100% - 32px));padding:5px 6px 5px 5px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);z-index:4;pointer-events:auto}
+.np img{width:48px;height:48px;object-fit:cover;flex:none;display:block}
 .np .t{min-width:0;display:flex;flex-direction:column;gap:3px;padding-right:2px}
 .np .t b,.np .t span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(230px,46vw)}
 .np .t b{font-weight:700}.np .t span{color:var(--dim)}
-.np .c{display:flex;flex:none}.np .c button{width:32px;height:30px;display:grid;place-items:center;color:var(--fg)}
-.np .c svg{width:11px;height:11px}.np .bar{position:absolute;left:0;bottom:-1px;height:1px;background:var(--volt);width:0;transition:width 1s linear}
+.np .c{display:flex;flex:none;gap:2px}.np .c button{width:56px;height:52px;display:grid;place-items:center;color:var(--fg)}
+.np .c svg{width:20px;height:20px}.np .bar{position:absolute;left:0;bottom:-1px;height:1px;background:var(--volt);width:0;transition:width 1s linear}
 .np.ask{cursor:pointer}.np.ask .c,.np.ask img{display:none}
 @media (min-aspect-ratio:1/1){
  #hud:not([hidden])~.np{left:max(16px,env(safe-area-inset-left,0px));transform:none;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:min(430px,calc(100% - min(340px,48%) - 48px))}
@@ -517,8 +521,125 @@ if(npOn){const st=document.createElement('style');st.textContent=`.np{position:f
  $('np').addEventListener('click',()=>{if($('np').classList.contains('ask'))try{NATIVE.openMediaAccess();}catch(e){}});
  setInterval(npPoll,1000);setTimeout(npPoll,300);}
 
+/* ---------- camera tracking: head-coupled perspective and hand gestures (MediaPipe, on the phone only) ---------- */
+const camAllowed=!!NATIVE;   // the app bundles the tracking models; the web preview has no camera access
+const TRK={on:false,busy:false,video:null,stream:null,face:null,gest:null,vis:null,fs:null,lastT:0,n:0,
+ head:{ok:false,seen:0,E0:null,Z0:0,cal:[],ex:0,ey:0,zr:1,tx:0,ty:0,tz:1},
+ hand:{hist:[],hold:false,lx:0,ly:0,vx:0,vy:0,palmT:0,cool:0,flickCool:0,seen:0}};
+/* One Euro filter: steady when still, quick when moving, so the view never swims or lags */
+function euro(){let x=null,dx=0,t0=0;return(v,t,minCut,beta)=>{if(x===null){x=v;t0=t;return v;}const dt=Math.max(1e-3,t-t0);t0=t;
+ const al=c=>1/(1+1/(2*Math.PI*c*dt));dx+=al(1)*((v-x)/dt-dx);x+=al(minCut+beta*Math.abs(dx))*(v-x);return x;};}
+const FX=euro(),FY=euro(),FZ=euro();
+function trackUI(seg){if(!NATIVE)return`<p class="note">Camera tracking runs in the app, where the tracking models are bundled.</p>`;
+ let h='';if(TRACK_HEAD)h+=seg('thead',[['off','Off'],['on','On']],'Head tracking (depth)');
+ h+=seg('thand',[['off','Off'],['on','On']],'Hand gestures');
+ h+=`<p class="note">${TRACK_HEAD?'Head tracking turns the screen into a window: move or lean in and the scene shifts like real depth behind the glass. ':''}Open palm swipe right: next track. Swipe left: previous. Hold an open palm still for a second: play / pause.${TRACK_HEAD?' Make a fist to grab and turn the scene, open your hand to let it spin. Point up and flick sideways to spin.':''} Everything is processed on the phone.</p>`;
+ h+=seg('tprev',[['off','Off'],['on','On']],'Camera preview');
+ h+=seg('tflipx',[['off','Normal'],['on','Flipped']],'Left / right');h+=seg('tflipy',[['off','Normal'],['on','Flipped']],'Up / down');
+ h+=seg('tturn',[['0','0°'],['90','90°'],['180','180°'],['270','270°']],'Camera turn');
+ h+=`<div class="seg"><button id="trecenter">Re-center</button></div>`;return h;}
+const trkWant=()=>camAllowed&&!document.hidden&&((TRACK_HEAD&&S.thead==='on')||S.thand==='on');
+async function trkModels(){if(!TRK.vis){TRK.vis=await import('./mp/vision_bundle.mjs');TRK.fs=await TRK.vis.FilesetResolver.forVisionTasks('mp/wasm');}
+ const mk=async(C,o)=>{try{return await C.createFromOptions(TRK.fs,{...o,baseOptions:{...o.baseOptions,delegate:'GPU'}});}catch(e){return await C.createFromOptions(TRK.fs,{...o,baseOptions:{...o.baseOptions,delegate:'CPU'}});}};
+ if(TRACK_HEAD&&S.thead==='on'&&!TRK.face)TRK.face=await mk(TRK.vis.FaceLandmarker,{baseOptions:{modelAssetPath:'mp/face_landmarker.task'},runningMode:'VIDEO',numFaces:1});
+ if(S.thand==='on'&&!TRK.gest)TRK.gest=await mk(TRK.vis.GestureRecognizer,{baseOptions:{modelAssetPath:'mp/gesture_recognizer.task'},runningMode:'VIDEO',numHands:1});}
+async function trkSync(){if(TRK.busy)return;TRK.busy=true;
+ try{if(!trkWant()){trkStop();return;}
+  if(!TRK.on)toast('Starting camera tracking');
+  await trkModels();
+  if(!TRK.on){const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480},frameRate:{ideal:30}},audio:false});
+   if(!trkWant()){st.getTracks().forEach(t=>t.stop());return;}
+   const v=TRK.video||document.createElement('video');v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.srcObject=st;await v.play();
+   TRK.video=v;TRK.stream=st;TRK.on=true;TRK.head.Z0=0;TRK.head.cal=[];trkLoop();}
+  trkPreview();}
+ catch(e){trkStop();toast('Camera tracking unavailable');note('Camera tracking could not start: '+(e&&e.message||e),1);}
+ finally{TRK.busy=false;}}
+function trkStop(){if(TRK.stream)TRK.stream.getTracks().forEach(t=>t.stop());TRK.stream=null;TRK.on=false;TRK.head.ok=false;
+ if(TRK.hand.hold){TRK.hand.hold=false;window.__trackRelease&&__trackRelease(0);}trkPreview();}
+function trkDims(v){const t=+S.tturn%180!==0;return t?[v.videoHeight,v.videoWidth]:[v.videoWidth,v.videoHeight];}
+/* image coordinates to screen-aligned ones: centered, x toward the viewer's right, y up (the front camera sees you mirrored) */
+function trkMap(x,y){let sx=-(x-.5),sy=-(y-.5);if(S.tflipx==='on')sx=-sx;if(S.tflipy==='on')sy=-sy;return[sx,sy];}
+function trkLoop(){if(!TRK.on)return;const v=TRK.video;
+ if(v.readyState>=2){const t=performance.now();if(t>TRK.lastT+1){TRK.lastT=t;TRK.n++;
+  const hd=TRK.face&&TRACK_HEAD&&S.thead==='on',hn=TRK.gest&&S.thand==='on',both=hd&&hn,o=+S.tturn?{rotationDegrees:+S.tturn}:undefined;
+  if(hd&&(!both||TRK.n%2===0)){try{trkHead(TRK.face.detectForVideo(v,t,o),t/1000,v);}catch(e){}}
+  if(hn&&(!both||TRK.n%2===1)){try{trkHand(TRK.gest.recognizeForVideo(v,t,o),t/1000,v);}catch(e){}}}}
+ if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(trkLoop);else requestAnimationFrame(trkLoop);}
+function trkHead(res,t,v){const L=res&&res.faceLandmarks&&res.faceLandmarks[0];if(!L||L.length<478)return;
+ const[W,H]=trkDims(v),P=i=>[L[i].x*W,L[i].y*H],dd=(a,b)=>{const p=P(a),q=P(b);return Math.hypot(p[0]-q[0],p[1]-q[1]);};
+ const iris=(dd(469,471)+dd(474,476))/2;if(iris<2)return;
+ /* distance from iris size (about 11.7 mm on nearly everyone), assuming a typical ~78° diagonal front camera */
+ const f=Math.hypot(W,H)/(2*Math.tan(39*Math.PI/180)),Z=f*11.7/iris;
+ const[mx,my]=trkMap((L[468].x+L[473].x)/2,(L[468].y+L[473].y)/2);
+ /* the camera sits at the phone's top edge, which moves around the screen as it rotates */
+ const mm=.15875,sw=innerWidth*mm,sh=innerHeight*mm,ang=((screen.orientation&&screen.orientation.angle)||0)%360;
+ const cp=ang===90?[-sw/2-5,0]:ang===270?[sw/2+5,0]:ang===180?[0,-sh/2-5]:[0,sh/2+5];
+ const mc=2.6-2.4*S.hsmooth,ex=FX(cp[0]+mx*W*Z/f,t,mc,.006),ey=FY(cp[1]+my*H*Z/f,t,mc,.006),ez=FZ(Z,t,mc*.6,.004);
+ const h=TRK.head;
+ if(!h.Z0){h.cal.push([ex,ey,ez]);if(h.cal.length>=8){const m=i=>h.cal.map(c=>c[i]).sort((a,b)=>a-b)[4];h.E0=[m(0),m(1)];h.Z0=m(2);}return;}
+ /* the neutral point drifts slowly toward where you actually sit, so only movement reads as depth */
+ const dt=Math.min(.2,t-(h.seen||t));h.E0[0]+=(ex-h.E0[0])*dt/25;h.E0[1]+=(ey-h.E0[1])*dt/25;h.Z0+=(ez-h.Z0)*dt/40;
+ h.ex=(ex-h.E0[0])/h.Z0;h.ey=(ey-h.E0[1])/h.Z0;h.zr=ez/h.Z0;h.seen=t;h.ok=true;
+ trkDots([[ (L[468].x+L[473].x)/2,(L[468].y+L[473].y)/2 ]],v);}
+/* eases toward the tracked pose, and back to center when the face is lost */
+function headPose(dt){const h=TRK.head,live=TRACK_HEAD&&S.thead==='on'&&h.ok&&performance.now()/1000-h.seen<.5,s=S.hstr;
+ const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),tx=live?cl(h.ex*s,-.7,.7):0,ty=live?cl(h.ey*s,-.7,.7):0,tz=live?cl(1+(h.zr-1)*s,.4,2.2):1,k=Math.min(1,dt*(live?14:2.2));
+ h.tx+=(tx-h.tx)*k;h.ty+=(ty-h.ty)*k;h.tz+=(tz-h.tz)*k;return{tx:h.tx,ty:h.ty,tz:h.tz};}
+/* off-axis projection: the screen is a window, the eye sits wherever the viewer's head is */
+function headView(eye,T,fov,n,fa,hp){const fw=norm(sub(T,eye)),r=norm(cross(fw,[0,1,0])),u=cross(r,fw);
+ const th=Math.tan(fov/2),ez0=1/th,Hw=Math.hypot(T[0]-eye[0],T[1]-eye[1],T[2]-eye[2])*th,ez=ez0*hp.tz,ex=hp.tx*ez0,ey=hp.ty*ez0;
+ const e=[0,1,2].map(i=>T[i]-fw[i]*ez*Hw+r[i]*ex*Hw+u[i]*ey*Hw);
+ const m=new Float32Array([r[0],u[0],-fw[0],0,r[1],u[1],-fw[1],0,r[2],u[2],-fw[2],0,-dot(r,e),-dot(u,e),dot(fw,e),1]);
+ const l=(-ASP-ex)*n/ez,rt=(ASP-ex)*n/ez,b=(-1-ey)*n/ez,tp=(1-ey)*n/ez;
+ return{V:{m,f:fw,r,u},P:new Float32Array([2*n/(rt-l),0,0,0,0,2*n/(tp-b),0,0,(rt+l)/(rt-l),(tp+b)/(tp-b),(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0]),eye:e};}
+function trkMedia(cmd,label){toast(label);if(NATIVE&&NATIVE.mediaCmd){try{NATIVE.mediaCmd(cmd);}catch(e){}if(typeof npPoll==='function')setTimeout(npPoll,300);}}
+function trkHand(res,t,v){const hd=TRK.hand,lm=res&&res.landmarks&&res.landmarks[0];
+ if(!lm){if(hd.hold){hd.hold=false;window.__trackRelease&&__trackRelease(hd.vx,hd.vy);}hd.hist=[];hd.palmT=0;trkChip(0);return;}
+ const g=res.gestures&&res.gestures[0]&&res.gestures[0][0],name=g&&g.score>.55?g.categoryName:'None';
+ const c=[0,5,9,13,17].reduce((a,i)=>[a[0]+lm[i].x/5,a[1]+lm[i].y/5],[0,0]);const[x,y]=trkMap(c[0],c[1]);
+ hd.hist.push({t,x,y,name});while(hd.hist.length&&t-hd.hist[0].t>.5)hd.hist.shift();
+ const old=hd.hist.find(s=>t-s.t<.14)||hd.hist[0],dts=Math.max(.03,t-old.t),vx=(x-old.x)/dts,vy=(y-old.y)/dts;hd.seen=t;
+ /* fist = grab: turn the scene directly; opening the hand releases it with the hand's speed */
+ if(name==='Closed_Fist'){if(!hd.hold){hd.hold=true;hd.lx=x;hd.ly=y;}else{window.__trackDrag&&__trackDrag(x-hd.lx,y-hd.ly);hd.lx=x;hd.ly=y;}hd.vx=vx;hd.vy=vy;}
+ else if(hd.hold){hd.hold=false;window.__trackRelease&&__trackRelease(hd.vx,hd.vy);}
+ /* open palm swipe = next / previous track */
+ if(name==='Open_Palm'&&t>hd.cool){const w=hd.hist.filter(s=>t-s.t<.38);
+  if(w.length>2&&w.every(s=>s.name==='Open_Palm')){const dx=x-w[0].x,dy=y-w[0].y;
+   if(Math.abs(dx)>.24&&Math.abs(dx)>2*Math.abs(dy)){trkMedia(dx>0?'next':'prev',dx>0?'Next track':'Previous track');hd.cool=t+1.3;hd.palmT=0;hd.hist=[];trkChip(0);return;}}}
+ /* open palm held still = play / pause, with a visible fill so it never fires by surprise */
+ if(name==='Open_Palm'&&Math.hypot(vx,vy)<.35&&t>hd.cool){if(!hd.palmT)hd.palmT=t;const p=(t-hd.palmT)/1.1;trkChip(p);
+  if(p>=1){const playing=typeof npPlaying!=='undefined'&&npPlaying;trkMedia(playing?'pause':'play',playing?'Pause':'Play');hd.cool=t+1.6;hd.palmT=0;trkChip(0);}}
+ else{hd.palmT=0;trkChip(0);}
+ /* point up and flick sideways = spin */
+ if(name==='Pointing_Up'&&Math.abs(vx)>1.1&&t>hd.flickCool){window.__trackFlick&&__trackFlick(vx);hd.flickCool=t+.45;}
+ trkDots([c],v);}
+function trkChip(p){let el=$('trkChip');if(!el){if(!p)return;el=document.createElement('div');el.id='trkChip';el.className='toast';el.style.top='calc(56px + env(safe-area-inset-top,0px))';
+  el.innerHTML='<span>Hold for play / pause</span><i style="position:absolute;left:0;bottom:0;height:2px;background:var(--volt);width:0"></i>';document.body.appendChild(el);}
+ el.hidden=p<.2;el.lastChild.style.width=Math.min(100,p*100)+'%';}
+function trkPreview(){let w=$('trkPrev');const want=TRK.on&&S.tprev==='on';
+ if(!want){if(w)w.hidden=true;return;}
+ if(!w){w=document.createElement('div');w.id='trkPrev';w.style.cssText='position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:132px;border:1px solid var(--line);z-index:4;pointer-events:none;background:#000';
+  w.innerHTML='<canvas id="trkPrevC" width="132" height="99" style="display:block;width:132px;height:99px"></canvas>';document.body.appendChild(w);}
+ w.hidden=false;}
+let trkPts=[];
+function trkDots(pts,v){if(S.tprev!=='on')return;trkPts=pts;const c=$('trkPrevC');if(!c)return;const x=c.getContext('2d'),W=c.width,H=c.height;
+ x.save();x.translate(W,0);x.scale(-1,1);try{x.drawImage(v,0,0,W,H);}catch(e){}x.restore();
+ x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--volt')||'#fff';
+ for(const p of trkPts){x.fillRect((1-p[0])*W-3,p[1]*H-3,6,6);}}
+$('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!el)return;
+ if(el.id==='trecenter'){TRK.head.Z0=0;TRK.head.cal=[];toast('Re-centering: hold still');return;}
+ if(['thead','thand','tprev'].includes(el.dataset.set))setTimeout(trkSync,0);});
+document.addEventListener('visibilitychange',()=>setTimeout(trkSync,0));
+if(trkWant())setTimeout(trkSync,900);
+
 /* ---------- frame loop ---------- */
 const cam={orbit:0,yaw:0,pitch:0,yawV:0,pitchV:0,spin:0,drag:0};let yawPrev=0,cyc=0;
+/* camera hand gestures drive the same spin and momentum as touch */
+let handHold=false;
+window.__trackDrag=(dx,dy)=>{handHold=true;cam.spin=0;cam.drag+=-dx*3.2*S.gspin;cam.pitchV+=-dy*2.2*S.gspin;};
+window.__trackRelease=vx=>{handHold=false;if(S.mom>.01)cam.spin=Math.max(-14,Math.min(14,-vx*3.5*S.gspin));};
+window.__trackFlick=vx=>{cam.spin=Math.max(-14,Math.min(14,cam.spin-vx*4.5*S.gspin));};
+
 const inert={o:[0,0,0],v:[0,0,0]};let offPrev=[0,0,0];
 const wrp={trav:0,travP:0,speed:0};const SPAN=1300;
 let last=performance.now()/1000,fpsS=60,fpsT=0,moveT=0;
@@ -540,7 +661,7 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  cam.yaw+=cam.yawV;cam.pitch+=cam.pitchV;cam.yawV=0;cam.pitchV=0;
  cam.yaw*=Math.exp(-fdt*.35);cam.pitch*=Math.exp(-fdt*.6);cam.pitch=Math.max(-1.1,Math.min(1.1,cam.pitch));
  /* friction is part proportional, part constant: hard flicks coast a long time, and every spin still settles naturally */
- if(!ptr.on&&cam.spin!==0){const kl=.035+(1-mom)*3,kc=.012+(1-mom)*.6,sgn=Math.sign(cam.spin);cam.spin-=(kl*cam.spin+sgn*kc)*fdt;if(Math.sign(cam.spin)!==sgn)cam.spin=0;}
+ if(!ptr.on&&!handHold&&cam.spin!==0){const kl=.035+(1-mom)*3,kc=.012+(1-mom)*.6,sgn=Math.sign(cam.spin);cam.spin-=(kl*cam.spin+sgn*kc)*fdt;if(Math.sign(cam.spin)!==sgn)cam.spin=0;}
  cam.orbit+=S.orbit*fdt*.09+cam.spin*fdt+cam.drag;cam.drag=0;
  const yaw=cam.orbit+cam.yaw+tilt[0]*.9,yawRate=(yaw-yawPrev)/fdt;yawPrev=yaw;
  /* color cycle: both colors travel the wheel, together or in opposite directions, keeping their starting gap */
@@ -548,7 +669,7 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const C1=S.cycle>0?hexs(hsl(...shiftH(S.cA,cyc))):hexs(S.cA),C2=S.cycle>0?hexs(hsl(...shiftH(S.cB,cyc2))):hexs(S.cB);
  const pitch=.08+Math.sin(t*.15)*.05+cam.pitch-tilt[1]*.7;
  const T=[0,30,0],RAD=620,eye=[T[0]+RAD*Math.sin(yaw)*Math.cos(pitch),T[1]+RAD*Math.sin(pitch),T[2]+RAD*Math.cos(yaw)*Math.cos(pitch)];
- const V=lookAt(eye,T),Pm=persp(45*D2R,ASP,10,5000),VP=mul(Pm,V.m);
+ const HV=headView(eye,T,45*D2R,10,5000,headPose(fdt)),V=HV.V,Pm=HV.P,VP=mul(Pm,V.m);
 
  /* inertia: g-forces shove the cloud on a spring; braking surges it forward, turns slosh it sideways */
  const a=mot.acc,k=10,c=4,gain=220*S.inertia*sg;
