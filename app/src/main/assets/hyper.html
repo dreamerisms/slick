@@ -28,13 +28,13 @@ html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);font
 .hits i{width:9px;height:9px;border:1px solid var(--fg);opacity:.35}
 .hits i.on{background:var(--volt);border-color:var(--volt);opacity:1}
 .panel{pointer-events:auto;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.tabs{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:.14em;text-transform:uppercase}
 button:focus-visible,input:focus-visible,select:focus-visible,label.btn:focus-within{outline:1px solid var(--volt);outline-offset:1px}
-.tabs button{padding:11px 0;color:var(--dim);font-size:9px;letter-spacing:.06em}
+.tabs button{flex:1;min-width:0;padding:9px 0;color:var(--dim);font-size:9px;letter-spacing:.06em}
 .tabs button[aria-selected="true"]{color:var(--ink);background:var(--volt);font-weight:700}
-.body{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0}
-.row{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
+.body{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:11px;min-height:0}
+.row{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
 .row output{color:var(--volt);font-variant-numeric:tabular-nums}
 .row input[type=range]{grid-column:1/-1}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:none;margin:0}
@@ -43,14 +43,14 @@ input[type=range]::-moz-range-track{height:1px;background:var(--fg);opacity:.5}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;margin-top:-9px;background:var(--volt);border:0;border-radius:0}
 input[type=range]::-moz-range-thumb{width:10px;height:18px;background:var(--volt);border:0;border-radius:0}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
-.seg button,.btn{border:1px solid var(--line);padding:8px 10px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.seg button,.btn{border:1px solid var(--line);padding:7px 9px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:700}
 .lab{color:var(--dim);letter-spacing:.2em;text-transform:uppercase;font-size:10px}
-.grp{display:flex;flex-direction:column;gap:8px}
+.grp{display:flex;flex-direction:column;gap:6px}
 .cols{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);background:none}
 input[type=text],select{font:inherit;color:var(--fg);background:rgba(242,234,255,.06);border:1px solid var(--line);padding:8px;width:100%;letter-spacing:.08em;border-radius:0}
-.note{color:var(--dim);line-height:1.6;letter-spacing:.04em}
+.note{color:var(--dim);line-height:1.5;letter-spacing:.04em;font-size:10px}
 .note.warn{color:var(--fg)}
 .foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,2.2fr);border-top:1px solid var(--line)}
 .foot button{position:relative;overflow:hidden;padding:11px 6px;font-size:10px;border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -79,7 +79,7 @@ input[type=text],select{font:inherit;color:var(--fg);background:rgba(242,234,255
       <span><b>FPS</b> <span id="rFps">--</span></span>
       <span><b>SIM</b> <span id="rSim">--</span></span>
       <span><b>IN</b> <span id="rIn">DEMO</span></span>
-      <span><b>GYRO</b> <span id="rTilt">DRAG</span></span>
+      <span><b>DRIVE</b> <span id="rTilt">DRAG</span></span>
       <span><b>MOVE</b> <span id="rMove">0.00</span></span>
       <span><b>K S H</b> <span class="hits"><i id="h0"></i><i id="h1"></i><i id="h2"></i></span></span>
     </div>
@@ -110,7 +110,7 @@ const P=[
  ['speed','Flow speed','field',.01,.3,.08,.005],['curl','Curl scale','field',.0003,.003,.0012,.0001],['radius','Spread','field',.1,1.2,.65],
  ['die','Respawn','field',0,.02,.004,.0005],['coh','Cohesion','field',0,3,1],
  ['look','Look-around','motion',0,2,1],['inertia','Inertia','motion',0,2,1],['warp','Road warp','motion',0,2,1],
- ['cruise','Cruise','motion',0,1,0],['tiltp','Tilt parallax','motion',0,1,.5],['orbit','Auto rotate','motion',-1,1,.3],['mom','Momentum','motion',0,1,.6],
+ ['cruise','Cruise','motion',0,1,0],['tiltp','Tilt parallax','motion',0,1,.5],['orbit','Auto rotate','motion',-1,1,.3],['mom','Momentum','motion',0,1,.6],['beatm','Beat motion','motion',0,2,1],
  ['psize','Particle size','look',1,14,6],['mblur','Motion blur','look',0,8,4.5],['mdist','Streak length','look',20,300,140,1],
  ['bloom','Bloom','look',0,2,.5],['bloomR','Bloom radius','look',.3,2,1],
  ['bright','Brightness','look',.3,2,1],['cycle','Color cycle','look',0,1,0],
@@ -122,6 +122,7 @@ const BLENDS=['normal','add','screen','multiply','overlay','difference'];
 const FONTS={POSTER:'900 380px "Big Shoulders Display"',WIDE:'800 300px "Unbounded"',MONO:'700 320px "JetBrains Mono"'};
 const S={cA:PAL.HYPER[0],cB:PAL.HYPER[1],cBg:PAL.HYPER[2],cT:'#f2eaff',tinv:false,rlock:'',tmode:'pinned',ton:false,streak:'blur',cdir:'same',str:'HYPER',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
 for(const p of P)S[p[0]]=p[5];
+S.mdrive='gyro';
 try{Object.assign(S,JSON.parse(localStorage.getItem('hyper01')||'{}'));}catch(e){}
 S.src='demo';S.sound=false;S.scene='hyper';
 const save=()=>{try{localStorage.setItem('hyper01',JSON.stringify(S));}catch(e){}};
@@ -298,6 +299,8 @@ drawText();if(document.fonts&&document.fonts.load)Promise.all(Object.values(FONT
 const lvl=[0,0,0];let flash=0;
 const fx={shR:0,shA:0,shRp:0,shAp:0,tw:0,twV:0,twSign:1,twP:0,hat:0,hatSeed:0};
 function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=>el.classList.remove('on'),70);
+ if(S.mdrive==='beat'){if(kind===0){if(Math.random()<.22)bt.dir=-bt.dir;cam.spin+=bt.dir*s*(.4+.6*S.kick)*1.5*S.beatm;}
+  else if(kind===1){const a=Math.random()*6.2832;bt.sh[0]+=Math.cos(a)*s*14*S.beatm;bt.sh[1]+=Math.sin(a)*s*10*S.beatm;bt.sh[2]+=(Math.random()-.5)*s*12*S.beatm;cam.pitchV+=(Math.random()-.5)*.1*s*S.beatm;}}
  if(kind===0){if(S.kick<=0)return;fx.shR=20;fx.shA=Math.max(fx.shA*.5,s*S.burst*70*(.4+S.kick));flash=Math.max(flash,s*S.flash);}
  else if(kind===1){if(S.snare<=0)return;fx.twSign=-fx.twSign;fx.twV+=fx.twSign*s*S.snare*S.burst*2.6;}
  else{if(S.hat<=0)return;fx.hat=Math.min(1,fx.hat+s*S.hat);fx.hatSeed=Math.random()*100;}}
@@ -346,6 +349,7 @@ async function useFile(file){if(!file)return;try{audio();note('Decoding '+file.n
 /* ---------- motion: gyro turns the view, g-forces shove the cloud, road vibration drives the warp ---------- */
 const mot={g:[0,0,0],acc:[0,0,0],rot:[0,0,0],hasLin:false,gyro:false,seen:false,lp:[0,0,0],vib:0,energy:0};
 let gBase=[0,0],tiltSeen=false;
+const bt={dir:1,sh:[0,0,0]};
 addEventListener('devicemotion',e=>{const th=((screen.orientation&&screen.orientation.angle)||0)*Math.PI/180,c=Math.cos(th),s=Math.sin(th);
  const R=(x,y)=>[x*c+y*s,-x*s+y*c];
  const ag=e.accelerationIncludingGravity;if(ag&&ag.x!=null){const[x,y]=R(ag.x,ag.y);mot.g=[x/9.8,y/9.8,(ag.z||0)/9.8];
@@ -373,11 +377,12 @@ const hexs=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
 function shiftH(hx,dh){const[r,g,b]=hexs(hx),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;let h=0,s=0;
  if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);h=(mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4)*60;}return[h+dh,s*100,l*100];}
 function note(m,warn){S._note=m;S._warn=!!warn;const n=$('note');if(n){n.textContent=m;n.className='note'+(warn?' warn':'');}}
+function HIDE(k){return S.mdrive==='beat'?['look','inertia','tiltp','steer','gmode'].includes(k):k==='beatm';}
 function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
  const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
  let h='';
- if(S.tab==='source'){if(NATIVE)h+=cycUI();if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal'],['glyph','Glyph']],'Scene');
+ if(S.tab==='source'){if(NATIVE)h+=cycUI();
   h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
   h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
   if(NATIVE&&NATIVE.media)h+=seg('np',[[true,'Show'],[false,'Hide']],'Now playing bar');
@@ -385,8 +390,9 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=seg('q',[[0,'Lite 4K'],[1,'Mid 16K'],[2,'Max 32K']],'Particles');
   h+=`<div class="seg">${NATIVE?'':'<button id="fs">Fullscreen</button>'}<button id="reset">Reset controls</button></div><input type="file" id="file" accept="audio/*" hidden>`;
   h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
- if(S.tab==='motion'){h+=`<p class="note">Turning the phone (or the car it's mounted in) spins the field through the turn. With Momentum low it eases back; turned up, turns and flicks keep it spinning and it slows down naturally. Inertia is the shove from braking, accelerating and cornering, so you only feel it in a moving car. Braking and accelerating shove the cloud. Road vibration drives the warp; Cruise adds a steady warp for when you're parked.</p>`;
-  h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
+ if(S.tab==='motion'){h+=seg('mdrive',[['gyro','Gyro'],['beat','Beat']],'Motion driver');
+  h+=`<p class="note">${S.mdrive==='beat'?'Kicks spin the field, snares shove it, bass drives the warp. Phone motion ignored.':'Turns spin the field, g-forces shove it, road rumble drives the warp. Cruise = steady warp when parked.'}</p>`;
+  if(S.mdrive!=='beat')h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
  if(S.tab==='look'){h+=`<div class="grp"><span class="lab">Palette</span><div class="seg">${Object.keys(PAL).map(k=>`<button data-pal="${k}">${k}</button>`).join('')}</div>
   <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="First color"><input type="color" id="cB" value="${S.cB}" aria-label="Second color"><input type="color" id="cBg" value="${S.cBg}" aria-label="Background"><span class="lab">Color / color / background</span></div></div>`;
   h+=seg('cdir',[['same','Same way'],['opposite','Opposite ways']],'Color cycle direction');
@@ -397,7 +403,7 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=`<div class="grp"><label class="lab" for="str">Words</label><input type="text" id="str" maxlength="28" value="${S.str.replace(/"/g,'&quot;')}"></div>`;
   h+=seg('font',Object.keys(FONTS).map(k=>[k,k]),'Typeface');h+=seg('blend',BLENDS.map(b=>[b,b]),'Blend');
   h+=`<div class="cols"><input type="color" id="cT" value="${S.cT}" aria-label="Text color"><span class="lab">Text color</span></div>`;}
- for(const p of P)if(p[2]===S.tab)h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
+ for(const p of P)if(p[2]===S.tab&&!HIDE(p[0]))h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
  $('body').innerHTML=h;}
 const fmt=(p,v)=>p[6]===1?String(Math.round(v)):Math.round((v-p[3])/(p[4]-p[3])*100)+'';
 $('tabs').addEventListener('click',e=>{const t=e.target.dataset.tab;if(t){S.tab=t;save();paint();}});
@@ -430,7 +436,7 @@ paint();
 function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
 function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
  for(const k of['cA','cB','cBg','cT'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
- for(const k of['str','font','blend','tmode','streak','cdir'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['str','font','blend','tmode','streak','cdir','mdrive'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
  for(const k of['ton','tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
  if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
  drawText();save();paint();}
@@ -455,7 +461,7 @@ paintSlots();
 const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
 function randomize(){
  /* the field, its reactions and its look; text, audio source and motion response stay as they are */
- const keep=new Set(['bpm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright','mom','cycle','orbit']);
+ const keep=new Set(['bpm','beatm','tsize','topac','tdrift','look','inertia','warp','cruise','tiltp','bright','mom','cycle','orbit']);
  for(const p of P){if(keep.has(p[0])||p[6]===1)continue;const r=.1+.8*Math.random();S[p[0]]=+(p[3]+(p[4]-p[3])*r).toFixed(5);}
  S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
  S.curl=+(.0004+Math.random()*.0016).toFixed(5);S.psize=3+Math.random()*7;S.die=Math.random()<.4?0:+(Math.random()*.008).toFixed(4);
@@ -547,6 +553,19 @@ if(NATIVE){
  $('body').addEventListener('click',e=>{const el=e.target.closest('button[data-scy]');if(!el)return;scy.secs=+el.dataset.scy;cycSave();cycPaint();cycArm();paint();});
  cycPaint();cycArm();}
 
+/* readout shows which driver is moving the scene */
+setInterval(()=>{const el=$('rTilt');if(!el)return;if(S.mdrive==='beat'){if(el.textContent!=='BEAT'){el.dataset.prev=el.textContent;el.textContent='BEAT';}}else if(el.textContent==='BEAT')el.textContent=el.dataset.prev||'DRAG';},400);
+/* ---------- scene strip: the top switch in the panel, one tiny glyph per visual ---------- */
+if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph']];
+ const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.scn button{padding:8px 2px 7px;font-size:9px;letter-spacing:.08em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
+.scn button:first-child{border-left:0}.scn i{font-style:normal;font-size:13px;line-height:1;color:var(--fg);font-family:var(--mono)}
+.scn button[aria-current="true"]{color:var(--volt);font-weight:700;box-shadow:inset 0 -2px 0 var(--volt)}.scn button[aria-current="true"] i{color:var(--volt)}`;document.head.appendChild(st);
+ $('tabs').insertAdjacentHTML('beforebegin',`<nav class="scn" id="scn" aria-label="Scene">${SC.map(([k,g,l])=>`<button data-scn="${k}" aria-current="${k===S.scene}"><i aria-hidden="true">${g}</i>${l}</button>`).join('')}</nav>`);
+ $('scn').addEventListener('click',e=>{const b=e.target.closest('button[data-scn]');if(!b||b.dataset.scn===S.scene)return;const v=b.dataset.scn;
+  try{if(S.scene==='signal'&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(x){}try{localStorage.setItem('slickScene',v);}catch(x){}
+  const f=$('cycFade');if(f){f.style.transition='opacity .35s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),370);});}
+
 /* ---------- frame loop ---------- */
 const cam={orbit:0,yaw:0,pitch:0,yawV:0,pitchV:0,spin:0,drag:0};let yawPrev=0,cyc=0;
 const inert={o:[0,0,0],v:[0,0,0]};let offPrev=[0,0,0];
@@ -563,8 +582,9 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  /* look-around: gyro rates spin the view through a turn, then it eases back to center */
  const mom=S.mom;
  /* gyro turns: low Momentum = the view follows the turn and eases back; high Momentum = the turn winds up a spin that keeps going */
- if(mot.gyro){const gy=-mot.rot[0]*D2R*S.look*sg*1.2;cam.yawV+=gy*fdt*(1-mom);if(!ptr.on)cam.spin+=gy*fdt*mom*1.4;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.8;}
- const gr=tiltSeen?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];
+ const beat=S.mdrive==='beat';
+ if(mot.gyro&&!beat){const gy=-mot.rot[0]*D2R*S.look*sg*1.2;cam.yawV+=gy*fdt*(1-mom);if(!ptr.on)cam.spin+=gy*fdt*mom*1.4;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.8;}
+ const gr=tiltSeen&&!beat?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];
  for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
  const tilt=[(gr[0]-gBase[0])*S.tiltp,(gr[1]-gBase[1])*S.tiltp];
  cam.yaw+=cam.yawV;cam.pitch+=cam.pitchV;cam.yawV=0;cam.pitchV=0;
@@ -581,23 +601,24 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const V=lookAt(eye,T),Pm=persp(45*D2R,ASP,10,5000),VP=mul(Pm,V.m);
 
  /* inertia: g-forces shove the cloud on a spring; braking surges it forward, turns slosh it sideways */
- const a=mot.acc,k=10,c=4,gain=220*S.inertia*sg;
+ const a=beat?bt.sh:mot.acc,k=10,c=4,gain=220*(beat?1:S.inertia*sg);
  for(let i=0;i<3;i++){inert.v[i]+=(-k*inert.o[i]-c*inert.v[i]-a[i]*gain)*fdt;inert.o[i]+=inert.v[i]*fdt;inert.o[i]=Math.max(-240,Math.min(240,inert.o[i]));}
+ for(let i=0;i<3;i++)bt.sh[i]*=Math.exp(-fdt*8);
  const o=inert.o,off=[0,1,2].map(i=>V.r[i]*o[0]+V.u[i]*o[1]-V.f[i]*o[2]);
 
  /* warp: road vibration (plus Cruise) streams the field toward you; it coasts to a full wrap so the cloud re-forms */
- const road=Math.max(0,(mot.energy-.08)*2.2)*S.warp;
+ const road=beat?Math.max(0,lvl[0]-.2)*1.3*S.beatm*S.warp:Math.max(0,(mot.energy-.08)*2.2)*S.warp;
  const target=Math.min(1.6,road+S.cruise);wrp.speed+=(target-wrp.speed)*Math.min(1,fdt*1.5);
  if(wrp.trav>SPAN*1000){wrp.trav%=SPAN;}
  wrp.travP=wrp.trav;let v=wrp.speed*700;const rem=wrp.trav%SPAN;
  if(target<.02&&rem>.5){v=Math.max(v,240);const next=wrp.trav-rem+SPAN;
   if(wrp.trav+v*fdt>=next){wrp.trav=next;v=0;}}
  wrp.trav+=v*fdt;
- if(t-moveT>.25){moveT=t;$('rMove').textContent=(mot.energy).toFixed(2);}
+ if(t-moveT>.25){moveT=t;$('rMove').textContent=(beat?lvl[0]:mot.energy).toFixed(2);}
 
  /* music: shockwave shell, twist, sparkle */
  fx.shRp=fx.shR;fx.shAp=fx.shA;fx.shR+=650*fdt;fx.shA*=Math.exp(-fdt*2.4);
- fx.twP=fx.tw;fx.twV+=(-fx.tw*6-fx.twV*3.2)*fdt;fx.tw+=fx.twV*fdt;fx.tw+=mot.rot[2]*D2R*fdt*.6*S.look*sg;
+ fx.twP=fx.tw;fx.twV+=(-fx.tw*6-fx.twV*3.2)*fdt;fx.tw+=fx.twV*fdt;if(!beat)fx.tw+=mot.rot[2]*D2R*fdt*.6*S.look*sg;
  fx.hat*=Math.exp(-fdt*10);
 
  /* text overlay motion */

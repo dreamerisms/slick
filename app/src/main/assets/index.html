@@ -28,13 +28,13 @@ html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);font
 .hits i{width:9px;height:9px;border:1px solid var(--fg);opacity:.35}
 .hits i.on{background:var(--volt);border-color:var(--volt);opacity:1}
 .panel{pointer-events:auto;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:.14em;text-transform:uppercase}
 button:focus-visible,input:focus-visible,select:focus-visible,label.btn:focus-within{outline:1px solid var(--volt);outline-offset:1px}
-.tabs button{padding:11px 0;color:var(--dim);font-size:10px}
+.tabs button{flex:1;min-width:0;padding:9px 0;color:var(--dim);font-size:10px}
 .tabs button[aria-selected="true"]{color:var(--ink);background:var(--volt);font-weight:700}
-.body{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0}
-.row{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
+.body{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:11px;min-height:0}
+.row{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
 .row output{color:var(--volt);font-variant-numeric:tabular-nums}
 .row input[type=range]{grid-column:1/-1}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:none;margin:0}
@@ -43,14 +43,14 @@ input[type=range]::-moz-range-track{height:1px;background:var(--fg);opacity:.5}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;margin-top:-9px;background:var(--volt);border:0;border-radius:0}
 input[type=range]::-moz-range-thumb{width:10px;height:18px;background:var(--volt);border:0;border-radius:0}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
-.seg button,.btn{border:1px solid var(--line);padding:8px 10px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.seg button,.btn{border:1px solid var(--line);padding:7px 9px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:700}
 .lab{color:var(--dim);letter-spacing:.2em;text-transform:uppercase;font-size:10px}
-.grp{display:flex;flex-direction:column;gap:8px}
+.grp{display:flex;flex-direction:column;gap:6px}
 .cols{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);background:none}
 input[type=text],select{font:inherit;color:var(--fg);background:rgba(234,255,225,.06);border:1px solid var(--line);padding:8px;width:100%;letter-spacing:.08em;border-radius:0}
-.note{color:var(--dim);line-height:1.6;letter-spacing:.04em}
+.note{color:var(--dim);line-height:1.5;letter-spacing:.04em;font-size:10px}
 .note.warn{color:var(--fg)}
 .foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,2.2fr);border-top:1px solid var(--line)}
 .foot button{position:relative;overflow:hidden;padding:11px 6px;font-size:10px;border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -79,7 +79,7 @@ input[type=text],select{font:inherit;color:var(--fg);background:rgba(234,255,225
       <span><b>FPS</b> <span id="rFps">--</span></span>
       <span><b>SIM</b> <span id="rSim">--</span></span>
       <span><b>IN</b> <span id="rIn">DEMO</span></span>
-      <span><b>TILT</b> <span id="rTilt">DRAG</span></span>
+      <span><b>DRIVE</b> <span id="rTilt">DRAG</span></span>
       <span><b>K S H</b> <span class="hits"><i id="h0"></i><i id="h1"></i><i id="h2"></i></span></span>
     </div>
     </div>
@@ -107,7 +107,7 @@ const P=[
  ['kick','Kick drops','react',0,1,.6],['snare','Snare voids','react',0,1,.6],['hat','Hat beads','react',0,1,.5],
  ['size','Drop size','react',.4,2,1],['burst','Impact force','react',0,2,.8],['flash','Flash','react',0,1,.4],
  ['fill','Liquid / void','liquid',.15,.8,.42],['grav','Gravity','liquid',0,2,0],['edge','Ooze edge','liquid',0,1,.4],['stir','Current','liquid',0,1,.35],['visc','Thickness','liquid',0,1,.35],
- ['rip','Ripple depth','liquid',0,2,1],['rwide','Ripple width','liquid',0,1,.6],['ring','Ring time','liquid',0,1,.6],['tilt','Slosh','liquid',0,2,1],
+ ['rip','Ripple depth','liquid',0,2,1],['rwide','Ripple width','liquid',0,1,.6],['ring','Ring time','liquid',0,1,.6],['tilt','Slosh','liquid',0,2,1],['beatm','Beat sway','liquid',0,2,1],
  ['memb','Membrane','look',0,1,.6],['gloss','Gloss','look',0,1.5,.8],['iri','Iridescence','look',0,1,.12],
  ['glow','Glow','look',0,1.5,.6],['bgLvl','Backdrop level','look',0,1.5,.6],['bgMove','Backdrop motion','look',0,1,.3],
  ['bgScale','Pattern scale','look',.3,3,1],
@@ -119,6 +119,7 @@ const BGS=['ink','solid','gradient','caustic','halftone','grid','checker'];
 const FONTS={POSTER:'900 380px "Big Shoulders Display"',WIDE:'800 300px "Unbounded"',MONO:'700 320px "JetBrains Mono"'};
 const S={cA:PAL.ACID[0],cB:PAL.ACID[1],cC:PAL.ACID[2],cT:'#f2fff0',cD:'#123a24',bgMode:'ink',tinv:false,rlock:'',tmode:'float',ton:true,str:'SCENE 01',font:'POSTER',blend:'normal',src:'demo',sound:false,q:1,tab:'react'};
 for(const p of P)S[p[0]]=p[5];
+S.mdrive='gyro';
 try{Object.assign(S,JSON.parse(localStorage.getItem('slick01')||'{}'));}catch(e){}
 S.src='demo';S.sound=false;S.scene='slick';
 if(!['ink','solid','gradient','caustic','halftone','grid','checker'].includes(S.bgMode))S.bgMode='ink';
@@ -261,6 +262,7 @@ const Q=[];const lvl=[0,0,0];let flash=0,txHit=0;
 function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=>el.classList.remove('on'),70);
  const sc=Math.min(1,ASP)*S.size,x=.06+Math.random()*.88,y=.08+Math.random()*.84;
  if(kind<2&&S.ton&&S.tmode!=='pinned')txHit=Math.max(txHit,s*S.tpulse*(kind===0?1:.7));
+ if(S.mdrive==='beat'){if(kind===0){bgm.side=-bgm.side;bgm.tgt=bgm.side*(.22+.4*s)*S.beatm;}else if(kind===1)bgm.tgt+=(Math.random()-.5)*.35*s*S.beatm;}
  if(kind===0){if(S.kick<=0)return;Q.push([x,y,sc*(.05+.07*s),s,1.3,-.5,S.burst*.9,.7]);flash=Math.max(flash,s*S.flash);}
  else if(kind===1){if(S.snare<=0)return;Q.push([x,y,sc*(.06+.08*s),s,-1.5,.45,S.burst*.7,0]);}
  else{if(S.hat<=0)return;Q.push([x,y,sc*(.011+.012*s),s,1.1,.12,0,.35]);}
@@ -309,6 +311,7 @@ async function useFile(file){if(!file)return;try{audio();note('Decoding '+file.n
 
 /* ---------- tilt + touch ---------- */
 let gRaw=[0,0],gSen=[0,0],gBase=[0,0],gPrev=[0,0],tiltSeen=false;
+const bgm={a:0,tgt:0,side:1};
 addEventListener('devicemotion',e=>{const a=e.accelerationIncludingGravity;if(!a||a.x==null)return;
  const th=((screen.orientation&&screen.orientation.angle)||0)*Math.PI/180,x=a.x/9.8,y=a.y/9.8;
  gSen=[x*Math.cos(th)+y*Math.sin(th),-x*Math.sin(th)+y*Math.cos(th)];
@@ -324,11 +327,12 @@ cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{ptr
 const TABS=['source','react','liquid','look','text'];
 const hex=h=>[1,3,5].map(i=>Math.pow(parseInt(h.substr(i,2),16)/255,2.2));
 function note(m,warn){S._note=m;S._warn=!!warn;const n=$('note');if(n){n.textContent=m;n.className='note'+(warn?' warn':'');}}
+function HIDE(k){return S.mdrive==='beat'?['look','inertia','tiltp','steer','gmode'].includes(k):k==='beatm';}
 function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
  const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
  let h='';
- if(S.tab==='source'){if(NATIVE)h+=cycUI();if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal'],['glyph','Glyph']],'Scene');
+ if(S.tab==='source'){if(NATIVE)h+=cycUI();
   h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
   h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
   if(NATIVE&&NATIVE.media)h+=seg('np',[[true,'Show'],[false,'Hide']],'Now playing bar');
@@ -341,13 +345,14 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=seg('bgMode',BGS.map(b=>[b,b]),'Backdrop behind the liquid');
 
   h+=`<div class="cols"><input type="color" id="cD" value="${S.cD}" aria-label="Backdrop color"><span class="lab">Backdrop color</span></div>`;}
- if(S.tab==='liquid')h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Tilt direction');
+ if(S.tab==='liquid'){h+=seg('mdrive',[['gyro','Gyro'],['beat','Beat']],'Motion driver');h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],S.mdrive==='beat'?'Gravity':'Tilt direction');
+  h+=`<p class="note">${S.mdrive==='beat'?'Kicks swing the gravity side to side, snares jostle it. Phone tilt ignored.':'Tilt the phone to slosh. Gravity pulls toward the low side.'}</p>`;}
  if(S.tab==='text'){h+=seg('ton',[[true,'On'],[false,'Off']],'Text layer');
   h+=seg('tmode',[['float','Float'],['tether','Tethered'],['pinned','Pinned overlay']],'Behavior');
   h+=`<div class="grp"><label class="lab" for="str">Words</label><input type="text" id="str" maxlength="28" value="${S.str.replace(/"/g,'&quot;')}"></div>`;
   h+=seg('font',Object.keys(FONTS).map(k=>[k,k]),'Typeface');h+=seg('blend',BLENDS.map(b=>[b,b]),'Blend');
   h+=`<div class="cols"><input type="color" id="cT" value="${S.cT}" aria-label="Text color"><span class="lab">Text color</span></div>`;}
- for(const p of P)if(p[2]===S.tab)h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
+ for(const p of P)if(p[2]===S.tab&&!HIDE(p[0]))h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
  $('body').innerHTML=h;}
 const fmt=(p,v)=>p[6]===1?String(Math.round(v)):Math.round((v-p[3])/(p[4]-p[3])*100)+'';
 $('tabs').addEventListener('click',e=>{const t=e.target.dataset.tab;if(t){S.tab=t;save();paint();}});
@@ -381,7 +386,7 @@ paint();
 function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
 function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
  for(const k of['cA','cB','cC','cT','cD'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
- for(const k of['str','font','blend','tmode'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['str','font','blend','tmode','mdrive'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
  if(BGS.includes(o.bgMode))S.bgMode=o.bgMode;
  for(const k of['ton','tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
  if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
@@ -407,7 +412,7 @@ paintSlots();
 const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
 function randomize(){
  /* everything that shapes the liquid and its look; text, audio source and backdrop stay as they are */
- const keep=new Set(['bpm','tsize','topac','tdrift','tsub','tpulse','bgLvl','bgMove','bgScale']);
+ const keep=new Set(['bpm','beatm','tsize','topac','tdrift','tsub','tpulse','bgLvl','bgMove','bgScale']);
  for(const p of P){if(keep.has(p[0])||p[6]===1)continue;S[p[0]]=+(p[3]+(p[4]-p[3])*(.1+.8*Math.random())).toFixed(3);}
  S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
  if(Math.random()<.5)S.grav=0;S.iri=Math.random()<.7?Math.random()*.3:.6+Math.random()*.4;
@@ -498,6 +503,19 @@ if(NATIVE){
  $('body').addEventListener('click',e=>{const el=e.target.closest('button[data-scy]');if(!el)return;scy.secs=+el.dataset.scy;cycSave();cycPaint();cycArm();paint();});
  cycPaint();cycArm();}
 
+/* readout shows which driver is moving the scene */
+setInterval(()=>{const el=$('rTilt');if(!el)return;if(S.mdrive==='beat'){if(el.textContent!=='BEAT'){el.dataset.prev=el.textContent;el.textContent='BEAT';}}else if(el.textContent==='BEAT')el.textContent=el.dataset.prev||'DRAG';},400);
+/* ---------- scene strip: the top switch in the panel, one tiny glyph per visual ---------- */
+if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph']];
+ const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.scn button{padding:8px 2px 7px;font-size:9px;letter-spacing:.08em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
+.scn button:first-child{border-left:0}.scn i{font-style:normal;font-size:13px;line-height:1;color:var(--fg);font-family:var(--mono)}
+.scn button[aria-current="true"]{color:var(--volt);font-weight:700;box-shadow:inset 0 -2px 0 var(--volt)}.scn button[aria-current="true"] i{color:var(--volt)}`;document.head.appendChild(st);
+ $('tabs').insertAdjacentHTML('beforebegin',`<nav class="scn" id="scn" aria-label="Scene">${SC.map(([k,g,l])=>`<button data-scn="${k}" aria-current="${k===S.scene}"><i aria-hidden="true">${g}</i>${l}</button>`).join('')}</nav>`);
+ $('scn').addEventListener('click',e=>{const b=e.target.closest('button[data-scn]');if(!b||b.dataset.scn===S.scene)return;const v=b.dataset.scn;
+  try{if(S.scene==='signal'&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(x){}try{localStorage.setItem('slickScene',v);}catch(x){}
+  const f=$('cycFade');if(f){f.style.transition='opacity .35s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),370);});}
+
 /* ---------- frame loop: fixed 120 Hz simulation ticks, one render per display frame ---------- */
 const sA=new Float32Array(32),sK=new Float32Array(32);let last=performance.now()/1000,acc=0,fpsS=60,fpsT=0;
 try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
@@ -506,7 +524,9 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  fpsS+=(1/fdt-fpsS)*.05;if(t-fpsT>.5){fpsT=t;$('rFps').textContent=Math.round(fpsS);}
  if(cv.clientWidth*cv.clientHeight===0)return;resize();
  seq();analyse(t);flash*=Math.pow(.02,fdt);
- const gs=S.tinv?-1:1;gRaw=tiltSeen?[gSen[0]*gs,gSen[1]*gs]:[0,-gs];
+ const gs=S.tinv?-1:1;
+ bgm.tgt*=Math.exp(-fdt*1.1);bgm.a+=(bgm.tgt-bgm.a)*Math.min(1,fdt*6);
+ gRaw=S.mdrive==='beat'?[Math.sin(bgm.a)*gs,-Math.cos(bgm.a)*gs]:tiltSeen?[gSen[0]*gs,gSen[1]*gs]:[0,-gs];
  for(let i=0;i<2;i++)gBase[i]+=(gRaw[i]-gBase[i])*Math.min(1,fdt/3);
  const G=[(gRaw[0]-gBase[0])*S.tilt,(gRaw[1]-gBase[1])*S.tilt];
  const gv=gRaw;const GG=[G[0]+gv[0]*S.grav*2.5,G[1]+gv[1]*S.grav*2.5];let Gd=[(G[0]-gPrev[0])*.6,(G[1]-gPrev[1])*.6];gPrev=G;

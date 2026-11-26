@@ -76,6 +76,7 @@ class MainActivity : Activity() {
         }
         setContentView(web)
         hideSystemBars()
+        preferHighestRefreshRate()
 
         signals = SignalScanner(this) { state, message ->
             runOnUiThread {
@@ -390,6 +391,8 @@ class MainActivity : Activity() {
     }
 
     /** Ask for the panel's fastest mode (90/120 Hz where available) at the current resolution. */
+    /** Ask for the display's fastest mode at the current resolution, then tell the view it wants that rate too.
+     *  Many phones (Samsung, Pixel adaptive) keep apps at 60 unless both the window and the view ask. */
     private fun preferHighestRefreshRate() {
         @Suppress("DEPRECATION")
         val display = windowManager.defaultDisplay ?: return
@@ -397,7 +400,15 @@ class MainActivity : Activity() {
         val best = display.supportedModes
             .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
             .maxByOrNull { it.refreshRate } ?: return
-        window.attributes = window.attributes.also { it.preferredDisplayModeId = best.modeId }
+        window.attributes = window.attributes.also {
+            it.preferredDisplayModeId = best.modeId
+            it.preferredRefreshRate = best.refreshRate
+        }
+        if (::web.isInitialized && Build.VERSION.SDK_INT >= 35) {
+            try {
+                View::class.java.getMethod("setRequestedFrameRate", Float::class.javaPrimitiveType).invoke(web, best.refreshRate)
+            } catch (_: Throwable) {}
+        }
     }
 
     private fun hideSystemBars() {
@@ -420,7 +431,7 @@ class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemBars()
+        if (hasFocus) { hideSystemBars(); preferHighestRefreshRate() }
     }
 
     // ---------- lifecycle ----------

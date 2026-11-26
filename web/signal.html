@@ -29,13 +29,13 @@ html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);font
 .hits i{width:9px;height:9px;border:1px solid var(--fg);opacity:.35}
 .hits i.on{background:var(--volt);border-color:var(--volt);opacity:1}
 .panel{pointer-events:auto;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.tabs{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:.14em;text-transform:uppercase}
 button:focus-visible,input:focus-visible,select:focus-visible,label.btn:focus-within{outline:1px solid var(--volt);outline-offset:1px}
-.tabs button{padding:11px 0;color:var(--dim);font-size:9px;letter-spacing:.04em}
+.tabs button{flex:1;min-width:0;padding:9px 0;color:var(--dim);font-size:9px;letter-spacing:.04em}
 .tabs button[aria-selected="true"]{color:var(--ink);background:var(--volt);font-weight:700}
-.body{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0}
-.row{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
+.body{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:11px;min-height:0}
+.row{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:baseline;letter-spacing:.12em;text-transform:uppercase}
 .row output{color:var(--volt);font-variant-numeric:tabular-nums}
 .row input[type=range]{grid-column:1/-1}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:none;margin:0}
@@ -44,14 +44,14 @@ input[type=range]::-moz-range-track{height:1px;background:var(--fg);opacity:.5}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;margin-top:-9px;background:var(--volt);border:0;border-radius:0}
 input[type=range]::-moz-range-thumb{width:10px;height:18px;background:var(--volt);border:0;border-radius:0}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
-.seg button,.btn{border:1px solid var(--line);padding:8px 10px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.seg button,.btn{border:1px solid var(--line);padding:7px 9px;font-size:10px;color:var(--fg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:700}
 .lab{color:var(--dim);letter-spacing:.2em;text-transform:uppercase;font-size:10px}
-.grp{display:flex;flex-direction:column;gap:8px}
+.grp{display:flex;flex-direction:column;gap:6px}
 .cols{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);background:none}
 input[type=text],select{font:inherit;color:var(--fg);background:rgba(255,241,220,.06);border:1px solid var(--line);padding:8px;width:100%;letter-spacing:.08em;border-radius:0}
-.note{color:var(--dim);line-height:1.6;letter-spacing:.04em}
+.note{color:var(--dim);line-height:1.5;letter-spacing:.04em;font-size:10px}
 .note.warn{color:var(--fg)}
 .foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,2.2fr);border-top:1px solid var(--line)}
 .foot button{position:relative;overflow:hidden;padding:11px 6px;font-size:10px;border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -81,7 +81,7 @@ input[type=text],select{font:inherit;color:var(--fg);background:rgba(255,241,220
       <span><b>FPS</b> <span id="rFps">--</span></span>
       <span><b>NODES</b> <span id="rSim">--</span></span>
       <span><b>IN</b> <span id="rIn">DEMO</span></span>
-      <span><b>GYRO</b> <span id="rTilt">DRAG</span></span>
+      <span><b>DRIVE</b> <span id="rTilt">DRAG</span></span>
       <span><b>MOVE</b> <span id="rMove">0.00</span></span>
       <span><b>K S H</b> <span class="hits"><i id="h0"></i><i id="h1"></i><i id="h2"></i></span></span>
     </div>
@@ -112,7 +112,7 @@ const P=[
  ['relief','Relief','terrain',0,2,1],['tscale','Terrain scale','terrain',.4,2,1],['grid','Grid','terrain',0,1,.5],
  ['lattice','Plan lattice','terrain',0,1,.45],['trace','Trace pulses','terrain',0,1,.6],
  ['look','Look-around','motion',0,2,1],['mom','Momentum','motion',0,1,.6],['warp','Road warp','motion',0,2,1],
- ['cruise','Cruise','motion',0,1,.15],['tiltp','Tilt parallax','motion',0,1,.4],['spin','Auto rotate','motion',-1,1,.15],
+ ['cruise','Cruise','motion',0,1,.15],['tiltp','Tilt parallax','motion',0,1,.4],['spin','Auto rotate','motion',-1,1,.15],['beatm','Beat motion','motion',0,2,1],
  ['lineb','Line brightness','look',.2,2,1],['glow','Glow','look',.3,4,1.4],['nsize','Node size','look',.5,2,1],
  ['ghost','Faded signals','look',0,1,.45],['cycle','Color cycle','look',0,1,0],
  ['cardHold','Card hold (s)','card',2,30,8,1],['cardGap','Card gap (s)','card',4,90,20,1],['cardSize','Card size','card',.6,1.6,1]
@@ -120,6 +120,7 @@ const P=[
 const PAL={COPPER:['#f2b48a','#fff1dc','#0b0806'],MONO:['#ffffff','#8f99a3','#040404'],PHOSPHOR:['#9dffcf','#3fd8ff','#020806'],SOLAR:['#ffd36b','#7dff9a','#06070a'],ICE:['#d8ecff','#5a8cff','#03050b']};
 const S={cA:PAL.COPPER[0],cB:PAL.COPPER[1],cBg:PAL.COPPER[2],tinv:false,rlock:'',side:'left',card:'change',cdir:'same',src:'demo',sound:false,q:1,tab:'react'};
 for(const p of P)S[p[0]]=p[5];
+S.mdrive='gyro';
 try{Object.assign(S,JSON.parse(localStorage.getItem('signal01')||'{}'));}catch(e){}
 S.src='demo';S.sound=false;S.scene='signal';
 const save=()=>{try{localStorage.setItem('signal01',JSON.stringify(S));}catch(e){}};
@@ -242,7 +243,9 @@ function proj(x,y,z){const m=VPm,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=1)return nu
 const lvl=[0,0,0];let flash=0;
 const fx={pR:9999,pA:0,tr:0,hat:0,seed:0,kickT:0};
 let sigs=null;
+const sbt={dir:1};
 function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=>el.classList.remove('on'),70);
+ if(S.mdrive==='beat'){if(kind===0){if(Math.random()<.22)sbt.dir=-sbt.dir;cam.spin+=sbt.dir*s*(.3+.5*S.kick)*1.1*S.beatm;}else if(kind===1)cam.pitchV+=(Math.random()-.5)*.08*s*S.beatm;}
  if(kind===0){if(S.kick<=0)return;fx.pR=0;fx.pA=Math.min(1.6,s*S.kick*1.5*S.burst);flash=Math.max(flash,s*S.flash);fx.kickT=performance.now();}
  else if(kind===1){if(S.snare<=0)return;fx.tr=Math.min(2.5,fx.tr+s*S.snare*1.6*S.burst);}
  else{if(S.hat<=0)return;fx.hat=Math.min(1,fx.hat+s*S.hat);fx.seed=Math.random()*100;}
@@ -353,11 +356,12 @@ window.__signalStatus=(state,msg)=>{sigs.status=msg||'';if(state==='error')note(
 const TABS=['source','react','terrain','motion','look','card'];
 const hexs=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
 function note(m,warn){S._note=m;S._warn=!!warn;const n=$('note');if(n){n.textContent=m;n.className='note'+(warn?' warn':'');}}
+function HIDE(k){return S.mdrive==='beat'?['look','inertia','tiltp','steer','gmode'].includes(k):k==='beatm';}
 function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
  const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
  let h='';
- if(S.tab==='source'){if(NATIVE)h+=cycUI();if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal'],['glyph','Glyph']],'Scene');
+ if(S.tab==='source'){if(NATIVE)h+=cycUI();
   h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
   h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
   if(NATIVE&&NATIVE.media)h+=seg('np',[[true,'Show'],[false,'Hide']],'Now playing bar');
@@ -366,13 +370,13 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=`<div class="seg">${NATIVE?'':'<button id="fs">Fullscreen</button>'}<button id="reset">Reset controls</button></div><input type="file" id="file" accept="audio/*" hidden>`;
   h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
  if(S.tab==='react')h+=`<p class="note">Signal strength picks each node's band: the strongest pulse on the kick, mid-strength signals jump on the snare, faint ones shimmer on the hats.</p>`;
- if(S.tab==='motion'){h+=`<p class="note">Turns spin the survey, braking and road vibration move you through the terrain. Flick to spin, pinch to zoom.</p>`;h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
+ if(S.tab==='motion'){h+=seg('mdrive',[['gyro','Gyro'],['beat','Beat']],'Motion driver');h+=`<p class="note">${S.mdrive==='beat'?'Kicks spin the survey, bass moves you through it. Phone motion ignored.':'Turns spin the survey, road rumble moves you through it. Flick to spin, pinch to zoom.'}</p>`;if(S.mdrive!=='beat')h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Motion direction');}
  if(S.tab==='look'){h+=`<div class="grp"><span class="lab">Palette</span><div class="seg">${Object.keys(PAL).map(k=>`<button data-pal="${k}">${k}</button>`).join('')}</div>
   <div class="cols"><input type="color" id="cA" value="${S.cA}" aria-label="Wi-Fi color"><input type="color" id="cB" value="${S.cB}" aria-label="Bluetooth color"><input type="color" id="cBg" value="${S.cBg}" aria-label="Background"><span class="lab">Wi-Fi / Bluetooth / ground</span></div></div>`;
   h+=seg('side',[['left','Left'],['right','Right']],'Signal list side');h+=seg('cdir',[['same','Same way'],['opposite','Opposite ways']],'Color cycle direction');}
  if(S.tab==='card'){h+=seg('card',[['off','Off'],['always','Always'],['change','On new #1'],['timed','Timed']],'Strongest-signal card');
   h+=`<p class="note">The card floats above the lattice with full details on the strongest signal and a live K / S / H meter. On new #1 shows it for the hold time whenever a different signal takes the top spot; Timed shows it for the hold time, then hides it for the gap. No signals, no card.</p>`;}
- for(const p of P)if(p[2]===S.tab)h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
+ for(const p of P)if(p[2]===S.tab&&!HIDE(p[0]))h+=`<label class="row" for="p_${p[0]}"><span>${p[1]}</span><output id="o_${p[0]}">${fmt(p,S[p[0]])}</output><input type="range" id="p_${p[0]}" data-p="${p[0]}" min="${p[3]}" max="${p[4]}" step="${p[6]||.01}" value="${S[p[0]]}"></label>`;
  $('body').innerHTML=h;}
 const fmt=(p,v)=>p[6]===1?String(Math.round(v)):Math.round((v-p[3])/(p[4]-p[3])*100)+'';
 $('tabs').addEventListener('click',e=>{const t=e.target.dataset.tab;if(t){S.tab=t;save();paint();}});
@@ -404,7 +408,7 @@ paint();
 function lookOf(){const o={};for(const k in S)if(!['src','sound','tab','_note','_warn'].includes(k))o[k]=S[k];return o;}
 function applyLook(o){for(const p of P)if(typeof o[p[0]]==='number')S[p[0]]=Math.min(p[4],Math.max(p[3],o[p[0]]));
  for(const k of['cA','cB','cBg'])if(/^#[0-9a-f]{6}$/i.test(o[k]||''))S[k]=o[k];
- for(const k of['side','card','cdir'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
+ for(const k of['side','card','cdir','mdrive'])if(typeof o[k]==='string')S[k]=o[k].slice(0,28);
  for(const k of['tinv'])if(typeof o[k]==='boolean')S[k]=o[k];
  if([0,1,2].includes(o.q)&&o.q!==S.q){S.q=o.q;resize();}
  save();paint();}
@@ -429,7 +433,7 @@ paintSlots();
 const hsl=(h,s,l)=>{h=((h%360)+360)%360;s/=100;l/=100;const f=n=>{const k=(n+h/30)%12,c=l-s*Math.min(l,1-l)*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(c*255).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);};
 function randomize(){
  /* terrain, reactions and look; motion response and signal data stay as they are */
- const keep=new Set(['bpm','look','mom','warp','cruise','tiltp','spin','cycle','cardHold','cardGap','cardSize']);
+ const keep=new Set(['bpm','beatm','look','mom','warp','cruise','tiltp','spin','cycle','cardHold','cardGap','cardSize']);
  for(const p of P){if(keep.has(p[0])||p[6]===1)continue;S[p[0]]=+(p[3]+(p[4]-p[3])*(.1+.8*Math.random())).toFixed(3);}
  S.kick=.45+Math.random()*.4;S.snare=.4+Math.random()*.45;S.hat=.3+Math.random()*.5;
  const h=Math.random()*360,gap=[0,40,150,180,200][Math.random()*5|0];
@@ -532,8 +536,11 @@ function drawOverlay(now,dt){const c=cx;c.setTransform(ODPR,0,0,ODPR,0,0);c.clea
  /* the signal list: strongest first, entries glide into place and nudge with their band */
  list.sort((a,b)=>b.s-a.s);
  drawCard(c,list[0],now,dt);
- const left=S.side==='left',lw=Math.min(200,OW*.3),rowH=Math.round(15*ns),top=Math.round(OH*.22),maxRows=Math.max(3,Math.floor(OH*.56/rowH));
- const lx=left?18:OW-18-lw;
+ /* keep the list clear of the HUD: under the wordmark, above the readouts, beside the panel */
+ const hudOn=!$('hud').hidden,R=q=>hudOn?document.querySelector(q).getBoundingClientRect():null,mk=R('.mark'),lo=R('.lowl'),pn=R('#panel');
+ const left=S.side==='left',lw=Math.min(200,OW*.3),rowH=Math.round(15*ns),top=Math.round(Math.max(OH*.22,left&&mk?mk.bottom+30:0)),
+  bot=left&&lo?lo.top-14:OH-30,maxRows=Math.max(3,Math.floor(Math.min(OH*.56,bot-top)/rowH));
+ const lx=left?18:Math.min(OW-18-lw,pn&&pn.left>OW*.4?pn.left-18-lw:OW);
  c.font=`8px ${FONT_PX}`;const nw=list.filter(n=>n.type==='w').length,nb=list.length-nw;
  c.fillStyle=rgba(CA,.8);c.shadowColor=CA;c.shadowBlur=6*glow;c.fillText(`SIGNALS  W ${nw}  B ${nb}`,lx,top-16);c.shadowBlur=0;
  c.strokeStyle=rgba(CA,.35);c.beginPath();c.moveTo(lx,top-8);c.lineTo(lx+lw,top-8);c.stroke();
@@ -549,8 +556,8 @@ function drawOverlay(now,dt){const c=cx;c.setTransform(ODPR,0,0,ODPR,0,0);c.clea
   if(n.sp&&n.sp[2]>1){const ax=left?ex+lw+4:ex-4,bx=ax+(left?18:-18);c.strokeStyle=rgba(col,a*.32);c.beginPath();c.moveTo(ax,y);c.lineTo(bx,y);c.lineTo(n.sp[0],n.sp[1]);c.stroke();}});
  if(list.length>maxRows){c.fillStyle=rgba(CA,.5);c.fillText(`+${list.length-maxRows} MORE`,lx,top+maxRows*rowH+8);}
  /* plate caption */
- c.font=`8px ${FONT_PX}`;c.textAlign='center';c.fillStyle=rgba(CB,.42);
- c.fillText(`PRELIMINARY SURVEY OF AMBIENT SIGNAL STRUCTURES   PLATE 03   W${nw} B${nb}   SCALE 1:4800`,OW/2,OH-(window.__npShown?(window.__npH||52)+16:14));c.textAlign='left';
+ if(!hudOn){c.font=`8px ${FONT_PX}`;c.textAlign='center';c.fillStyle=rgba(CB,.42);
+ c.fillText(`PRELIMINARY SURVEY OF AMBIENT SIGNAL STRUCTURES   PLATE 03   W${nw} B${nb}   SCALE 1:4800`,OW/2,OH-(window.__npShown?(window.__npH||52)+16:14));c.textAlign='left';}
  $('rSim').textContent=`${nw}W ${nb}B`;}
 
 /* ---------- now playing: the phone's active media session (Spotify or any player) ---------- */
@@ -624,6 +631,19 @@ if(NATIVE){
  $('body').addEventListener('click',e=>{const el=e.target.closest('button[data-scy]');if(!el)return;scy.secs=+el.dataset.scy;cycSave();cycPaint();cycArm();paint();});
  cycPaint();cycArm();}
 
+/* readout shows which driver is moving the scene */
+setInterval(()=>{const el=$('rTilt');if(!el)return;if(S.mdrive==='beat'){if(el.textContent!=='BEAT'){el.dataset.prev=el.textContent;el.textContent='BEAT';}}else if(el.textContent==='BEAT')el.textContent=el.dataset.prev||'DRAG';},400);
+/* ---------- scene strip: the top switch in the panel, one tiny glyph per visual ---------- */
+if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph']];
+ const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.scn button{padding:8px 2px 7px;font-size:9px;letter-spacing:.08em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
+.scn button:first-child{border-left:0}.scn i{font-style:normal;font-size:13px;line-height:1;color:var(--fg);font-family:var(--mono)}
+.scn button[aria-current="true"]{color:var(--volt);font-weight:700;box-shadow:inset 0 -2px 0 var(--volt)}.scn button[aria-current="true"] i{color:var(--volt)}`;document.head.appendChild(st);
+ $('tabs').insertAdjacentHTML('beforebegin',`<nav class="scn" id="scn" aria-label="Scene">${SC.map(([k,g,l])=>`<button data-scn="${k}" aria-current="${k===S.scene}"><i aria-hidden="true">${g}</i>${l}</button>`).join('')}</nav>`);
+ $('scn').addEventListener('click',e=>{const b=e.target.closest('button[data-scn]');if(!b||b.dataset.scn===S.scene)return;const v=b.dataset.scn;
+  try{if(S.scene==='signal'&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(x){}try{localStorage.setItem('slickScene',v);}catch(x){}
+  const f=$('cycFade');if(f){f.style.transition='opacity .35s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),370);});}
+
 /* ---------- frame loop ---------- */
 let last=performance.now()/1000,fpsS=60,fpsT=0,moveT=0,trav=0,tspeed=0,yawPrev=0,cyc=0,CA=S.cA,CB=S.cB;
 function shiftH(hx,dh){const[r,g,b]=hexs(hx),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;let h=0,s=0;
@@ -636,8 +656,9 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  seq();analyse(t);flash*=Math.pow(.02,fdt);
  const now=performance.now();if(LIVE)liveStep(now);else demoStep(now);
  const sg=S.tinv?-1:1,D2R=Math.PI/180,mom=S.mom;
- if(mot.gyro){const gy=-mot.rot[0]*D2R*S.look*sg*1.2;cam.yawV+=gy*fdt*(1-mom);if(!ptr.on)cam.spin+=gy*fdt*mom*1.4;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.6;}
- const gr=tiltSeen?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
+ const beat=S.mdrive==='beat';
+ if(mot.gyro&&!beat){const gy=-mot.rot[0]*D2R*S.look*sg*1.2;cam.yawV+=gy*fdt*(1-mom);if(!ptr.on)cam.spin+=gy*fdt*mom*1.4;cam.pitchV+=-mot.rot[1]*D2R*S.look*sg*fdt*.6;}
+ const gr=tiltSeen&&!beat?[mot.g[0]*sg,mot.g[1]*sg]:[0,-1];for(let i=0;i<2;i++)gBase[i]+=(gr[i]-gBase[i])*Math.min(1,fdt/4);
  const tilt=[(gr[0]-gBase[0])*S.tiltp,(gr[1]-gBase[1])*S.tiltp];
  cam.yaw+=cam.yawV;cam.pitch+=cam.pitchV;cam.yawV=0;cam.pitchV=0;cam.yaw*=Math.exp(-fdt*.35);cam.pitch*=Math.exp(-fdt*.5);
  if(!ptr.on&&cam.spin!==0){const kl=.035+(1-mom)*3,kc=.012+(1-mom)*.6,sgn=Math.sign(cam.spin);cam.spin-=(kl*cam.spin+sgn*kc)*fdt;if(Math.sign(cam.spin)!==sgn)cam.spin=0;}
@@ -647,8 +668,8 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const T=[0,40,0],eye=[T[0]+cam.dist*Math.sin(yaw)*Math.cos(pitch),T[1]+cam.dist*Math.sin(pitch),T[2]+cam.dist*Math.cos(yaw)*Math.cos(pitch)];
  VPm=mul(persp(50*D2R,ASP,5,6000),lookAt(eye,T));
  /* moving through the survey: road vibration plus Cruise */
- const road=Math.max(0,(mot.energy-.08)*2.2)*S.warp;tspeed+=(Math.min(1.6,road+S.cruise)-tspeed)*Math.min(1,fdt*1.2);trav+=tspeed*520*fdt;
- if(t-moveT>.25){moveT=t;$('rMove').textContent=mot.energy.toFixed(2);}
+ const road=beat?Math.max(0,lvl[0]-.2)*1.2*S.beatm*S.warp:Math.max(0,(mot.energy-.08)*2.2)*S.warp;tspeed+=(Math.min(1.6,road+S.cruise)-tspeed)*Math.min(1,fdt*1.2);trav+=tspeed*520*fdt;
+ if(t-moveT>.25){moveT=t;$('rMove').textContent=(beat?lvl[0]:mot.energy).toFixed(2);}
  fx.pR+=900*fdt;fx.pA*=Math.exp(-fdt*1.6);fx.tr*=Math.exp(-fdt*1.8);fx.hat*=Math.exp(-fdt*9);
  const q=QS[S.q],bg=hexs(S.cBg),ca=hexs(CA),cb=hexs(CB),mixc=ca.map((v,i)=>v*.65+cb[i]*.35),B=S.lineb*(1+flash*.8);
  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,RW,RH);gl.clearColor(bg[0],bg[1],bg[2],1);gl.clear(gl.COLOR_BUFFER_BIT);
