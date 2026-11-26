@@ -26,14 +26,25 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      # The release label lives in release.txt: a number for a feature release (16), a letter on it for fixes (16a, 16b).
+      # Pushing again with the same label replaces that release instead of adding a new one.
+      - name: Read release label
+        id: rel
+        run: echo "tag=$(tr -d '[:space:]' < release.txt)" >> "$GITHUB_OUTPUT"
+
       - name: Name the APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk slick-build-${{ github.run_number }}.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk slick-build-${{ steps.rel.outputs.tag }}.apk
+
+      - name: Clear an earlier build with the same label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "build-${{ steps.rel.outputs.tag }}" --cleanup-tag -y -R "${{ github.repository }}" || true
 
       # A release gives a plain .apk link you can tap on the phone (no zip to extract).
       - name: Publish to Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Slick build ${{ github.run_number }}
+          tag_name: build-${{ steps.rel.outputs.tag }}
+          name: Slick build ${{ steps.rel.outputs.tag }}
           prerelease: true
-          files: slick-build-${{ github.run_number }}.apk
+          files: slick-build-${{ steps.rel.outputs.tag }}.apk

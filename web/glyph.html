@@ -357,9 +357,9 @@ $('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!e
  else if(el.dataset.set){const k=el.dataset.set;let v=el.dataset.val;
   if(k==='np'){S.np=v==='true';save();paint();npPoll();return;}
   if(k==='scene'){if(v!=='glyph'){try{localStorage.setItem('slickScene',v);}catch(x){}location.replace(v==='slick'?'index.html':v+'.html');}return;}
-  if(k==='src'){if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
+  if(k==='src'){srcPref(v);if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
    if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
-  if(k==='sound'){S.sound=v==='true';if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}
+  if(k==='sound'){S.sound=v==='true';srcPref(S.src);if(S.sound)audio();note(S.sound?'Demo beat is audible and driving the hit detection.':'');}
   else if(k==='tinv')S.tinv=v==='true';else{S[k]=v;if(k==='glyphs')buildAtlas();}}
  else return;
  save();paint();});
@@ -410,7 +410,12 @@ if(NATIVE&&NATIVE.setOrientation){rl.hidden=false;paintLock();try{NATIVE.setOrie
  rl.addEventListener('click',()=>{try{if(S.rlock){S.rlock='';NATIVE.setOrientation('auto');toast('Rotation unlocked');}
   else{S.rlock=String(NATIVE.currentOrientation());NATIVE.setOrientation(S.rlock);toast('Rotation locked');}}catch(e){}save();paintLock();});}
 /* keep a capture session alive across scene switches; otherwise start phone audio */
+/* the audio source carries over between scenes: whatever was picked last is what the next scene starts with */
+function srcPref(v){try{localStorage.setItem('slickSrc',JSON.stringify({src:v==='track'?'demo':v,sound:!!S.sound}));}catch(e){}}
 if(NATIVE)setTimeout(()=>{let route='';try{route=String(NATIVE.read()).split(',')[5]||'';}catch(e){}
+ let pref={};try{pref=JSON.parse(localStorage.getItem('slickSrc')||'{}');}catch(e){}
+ if(pref.src==='demo'){try{NATIVE.stop();}catch(e){}S.sound=!!pref.sound;if(S.sound)audio();setSrc('demo');return;}
+ if(pref.src==='mic'){try{NATIVE.stop();}catch(e){}useMic();return;}
  if(route==='capture')window.__slickStatus('cap','running','Capturing phone audio at full quality.');else{note('Starting phone audio...');NATIVE.start('vis');}},400);
 /* ---------- now playing: the phone's active media session (Spotify or any player) ---------- */
 if(S.np===undefined)S.np=true;
@@ -468,16 +473,14 @@ function cycGo(){const pool=Object.keys(CYC_SCENES).filter(k=>k!==S.scene),v=poo
  try{if(S.scene==='signal'&&NATIVE&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(e){}
  try{localStorage.setItem('slickScene',v);}catch(e){}
  try{localStorage.setItem('slickCycHide','1');}catch(e){}
- const f=$('cycFade');if(f){f.style.transition='opacity .6s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),620);}
+ location.replace(CYC_SCENES[v]);}
 function cycArm(){clearTimeout(cycTm);if(scy.on&&NATIVE)cycTm=setTimeout(cycGo,scy.secs*1000);}
 function cycPaint(){const b=$('cycBtn');if(!b)return;b.setAttribute('aria-pressed',scy.on?'true':'false');b.querySelector('span').textContent=scy.on?cycLabel():'Off';}
 /* self-contained: the Source tab can draw before this module has run */
 function cycUI(){if(!NATIVE)return'';let secs=180;try{secs=JSON.parse(localStorage.getItem('slickCycle')||'{}').secs||180;}catch(e){}
  return`<div class="grp"><span class="lab">Cycle scenes every</span><div class="seg">${[[30,'30 S'],[60,'1 MIN'],[180,'3 MIN'],[300,'5 MIN'],[600,'10 MIN']].map(([v,l])=>`<button data-scy="${v}" aria-pressed="${secs===v}">${l}</button>`).join('')}</div></div>`;}
 if(NATIVE){
- /* fade in from the last scene, and the chip that turns cycling on or off */
- document.body.insertAdjacentHTML('beforeend','<div id="cycFade" style="position:fixed;inset:0;background:#000;opacity:1;pointer-events:none;z-index:9;transition:opacity .7s"></div>');
- setTimeout(()=>{$('cycFade').style.opacity='0';},40);
+ /* the chip that turns cycling on or off */
  /* a cycle hop lands with the HUD hidden so the show runs hands-free */
  try{if(localStorage.getItem('slickCycHide')==='1'){localStorage.removeItem('slickCycHide');$('hud').hidden=true;}}catch(e){}
  const lowl=document.querySelector('.lowl');
@@ -497,7 +500,7 @@ if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','
  $('tabs').insertAdjacentHTML('beforebegin',`<nav class="scn" id="scn" aria-label="Scene">${SC.map(([k,g,l])=>`<button data-scn="${k}" aria-current="${k===S.scene}"><i aria-hidden="true">${g}</i>${l}</button>`).join('')}</nav>`);
  $('scn').addEventListener('click',e=>{const b=e.target.closest('button[data-scn]');if(!b||b.dataset.scn===S.scene)return;const v=b.dataset.scn;
   try{if(S.scene==='signal'&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(x){}try{localStorage.setItem('slickScene',v);}catch(x){}
-  const f=$('cycFade');if(f){f.style.transition='opacity .35s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),370);});}
+  location.replace(CYC_SCENES[v]);});}
 
 
 /* ---------- particles ---------- */

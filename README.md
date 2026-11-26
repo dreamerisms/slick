@@ -14,6 +14,7 @@ Android shell for the Slick audio-reactive liquid visualizer.
   - **Capture**: playback capture through a foreground service. Full-quality PCM, asks each session.
 - `SignalScanner.kt` feeds the Signal scene: Wi-Fi scan results and Bluetooth LE advertisements, held in memory
   only while that scene is open. Nothing is stored or sent anywhere.
-- Every push to `main` builds a debug APK on GitHub Actions and publishes it under Releases.
+- Every push to `main` builds a debug APK on GitHub Actions and publishes it under Releases, labeled from
+  `release.txt`: a new number for feature releases (16), a letter for fixes on top of one (16a, 16b).
 - The debug signing key in `app/keystore/` is a throwaway key so updates install over each other.
   Never use it for a Play Store build.

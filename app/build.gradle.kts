@@ -11,8 +11,8 @@ android {
         applicationId = "com.dddylan.slick"
         minSdk = 29          // Android 10: needed for playback capture
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.12.1"
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "16").toInt() + 1
+        versionName = rootProject.file("release.txt").readText().trim()
     }
 
     // A fixed debug key checked into the repo, so every new build installs over the last one.
