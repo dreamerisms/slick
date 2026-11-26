@@ -5,6 +5,3 @@ local.properties
 .idea/
 *.iml
 .DS_Store
-app/src/main/assets/mp/
-mediapipe-tasks-vision-*.tgz
-package/

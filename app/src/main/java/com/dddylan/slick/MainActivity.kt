@@ -322,18 +322,15 @@ class MainActivity : Activity() {
     }
 
     private inner class Chrome : WebChromeClient() {
-        /** The page asks for the mic (Mic source) or the front camera (tracking); map each to its Android permission. */
         override fun onPermissionRequest(request: PermissionRequest) {
             runOnUiThread {
-                val map = mapOf(
-                    PermissionRequest.RESOURCE_AUDIO_CAPTURE to Manifest.permission.RECORD_AUDIO,
-                    PermissionRequest.RESOURCE_VIDEO_CAPTURE to Manifest.permission.CAMERA,
-                )
-                val asked = request.resources.filter { it in map }
-                if (asked.isEmpty()) { request.deny(); return@runOnUiThread }
-                withPerms(asked.map { map.getValue(it) }.toTypedArray()) { got ->
-                    val ok = asked.filter { got[map.getValue(it)] == true }
-                    if (ok.isEmpty()) request.deny() else request.grant(ok.toTypedArray())
+                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in request.resources) {
+                    withMic(
+                        granted = { request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) },
+                        denied = { request.deny() },
+                    )
+                } else {
+                    request.deny()
                 }
             }
         }
@@ -361,8 +358,7 @@ class MainActivity : Activity() {
 
     private fun mimeFor(path: String) = when (path.substringAfterLast('.', "").lowercase()) {
         "html" -> "text/html"
-        "js", "mjs" -> "text/javascript"
-        "wasm" -> "application/wasm"
+        "js" -> "text/javascript"
         "css" -> "text/css"
         "json" -> "application/json"
         "png" -> "image/png"

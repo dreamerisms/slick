@@ -19,21 +19,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Camera tracking runs MediaPipe on the phone. The runtime comes from npm and the models from
-      # Google's model store; both are bundled into the app so tracking works offline.
-      - name: Fetch MediaPipe runtime and models
-        run: |
-          set -e
-          d=app/src/main/assets/mp
-          mkdir -p "$d/wasm"
-          npm pack @mediapipe/tasks-vision@1.2.2 --silent
-          tar -xzf mediapipe-tasks-vision-1.2.2.tgz
-          cp package/vision_bundle.mjs "$d/"
-          cp package/wasm/vision_wasm_internal.js package/wasm/vision_wasm_internal.wasm "$d/wasm/"
-          curl -fsSL -o "$d/face_landmarker.task" https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
-          curl -fsSL -o "$d/gesture_recognizer.task" https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task
-          ls -la "$d" "$d/wasm"
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
