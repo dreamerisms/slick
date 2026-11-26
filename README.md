@@ -3,7 +3,8 @@
 Android shell for the Slick audio-reactive liquid visualizer.
 
 - `web/slick.html` (Slick, liquid), `web/hyper.html` (Hyper, particles) and `web/signal.html` (Signal, a topographic
-  survey of nearby Wi-Fi and Bluetooth) are the scene sources (WebGL2).
+  survey of nearby Wi-Fi and Bluetooth) and `web/glyph.html` (Glyph, an ASCII-rendered 3D object that turns with
+  the phone) are the scene sources (WebGL2). The Cycle chip hops between scenes at random on a timer.
   Switch scenes in the Source tab; the app remembers the last one.
 - `app/src/main/assets/index.html` is generated from it. Regenerate the app pages with `tools/sync-scene.sh`.
 - `AudioEngine.kt` holds the two native audio routes and the band contract the scene reads:

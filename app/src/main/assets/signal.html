@@ -127,7 +127,7 @@ const $=id=>document.getElementById(id);
 const NATIVE=window.SlickNative||null;
 const LIVE=!!(NATIVE&&NATIVE.startSignals);
 try{localStorage.setItem('slickScene','signal');}catch(e){}
-const SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html'};
+const SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html',glyph:'glyph.html'};
 
 /* ---------- GL ---------- */
 const cv=$('gl'),ov=$('ov'),cx=ov.getContext('2d');
@@ -357,7 +357,7 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
  $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('');
  const seg=(key,opts,lab)=>`<div class="grp"><span class="lab">${lab}</span><div class="seg">${opts.map(([v,l])=>`<button data-set="${key}" data-val="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div></div>`;
  let h='';
- if(S.tab==='source'){if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal']],'Scene');
+ if(S.tab==='source'){if(NATIVE)h+=cycUI();if(NATIVE)h+=seg('scene',[['slick','Slick'],['hyper','Hyper'],['signal','Signal'],['glyph','Glyph']],'Scene');
   h+=NATIVE?seg('src',[['phone','Phone audio'],['capture','Capture'],['mic','Mic'],['demo','Demo beat'],['track','Load track']],'Audio source'):seg('src',[['demo','Demo beat'],['track','Load track'],['mic','Mic']],'Audio stand-in');
   h+=seg('sound',[[false,'Silent'],[true,'Audible']],'Demo beat sound');
   if(NATIVE&&NATIVE.media)h+=seg('np',[[true,'Show'],[false,'Hide']],'Now playing bar');
@@ -561,31 +561,35 @@ const IC={prev:'<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
  play:'<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z"/></svg>',
  pause:'<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="2.5" y="2" width="2.4" height="8"/><rect x="7.1" y="2" width="2.4" height="8"/></svg>'};
 let npPlaying=false,npArt='';
+/* fixed-size bar: text that doesn't fit glides back and forth instead of resizing the box */
+function npText(el,txt){if(el.dataset.t===txt&&el.dataset.w==String(el.clientWidth))return;el.dataset.t=txt;el.dataset.w=String(el.clientWidth);
+ el.innerHTML='<i class="mq"></i>';const i=el.firstChild;i.textContent=txt;const over=i.scrollWidth-el.clientWidth;
+ if(over>2){i.style.setProperty('--d',-over-2+'px');i.style.animation=`npmq ${Math.max(5,over/26+3).toFixed(1)}s ease-in-out infinite alternate`;}}
 /* tell the HUD how tall the bar is so the menu (portrait) or the readouts (landscape) can make room */
 function npLayout(on){const r=document.documentElement;r.classList.toggle('np-on',on);window.__npShown=on;
  if(on){const h=$('np').offsetHeight+10;r.style.setProperty('--npH',h+'px');window.__npH=h;}}
 function npPoll(){if(!npOn)return;const el=$('np');if(!S.np){el.hidden=true;npLayout(false);return;}
  let d;try{d=JSON.parse(String(NATIVE.media()));}catch(e){return;}
- if(!d.access){el.hidden=false;el.classList.add('ask');$('npT').textContent='Show what’s playing';$('npA').textContent='Tap to allow notification access';npLayout(true);return;}
+ if(!d.access){el.hidden=false;el.classList.add('ask');npText($('npT'),'Show what’s playing');npText($('npA'),'Tap to allow notification access');npLayout(true);return;}
  el.classList.remove('ask');if(!d.title){el.hidden=true;npLayout(false);return;}
- el.hidden=false;$('npT').textContent=d.title;$('npA').textContent=d.artist||d.app||'';
+ el.hidden=false;npText($('npT'),d.title);npText($('npA'),d.artist||d.app||'');
  if(d.art!==npArt){npArt=d.art||'';const im=$('npI');im.hidden=!npArt;if(npArt)im.src=npArt;}
  npPlaying=!!d.playing;$('npP').innerHTML=npPlaying?IC.pause:IC.play;$('npP').setAttribute('aria-label',npPlaying?'Pause':'Play');
  const f=d.dur>0?Math.min(1,(d.pos+(npPlaying?1000:0))/d.dur):0;$('npBar').style.width=(f*100).toFixed(2)+'%';npLayout(true);}
-if(npOn){const st=document.createElement('style');st.textContent=`.np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;max-width:min(430px,calc(100% - 32px));padding:5px 6px 5px 5px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);z-index:4;pointer-events:auto}
-.np img{width:30px;height:30px;object-fit:cover;flex:none;display:block}
-.np .t{min-width:0;display:flex;flex-direction:column;gap:3px;padding-right:2px}
-.np .t b,.np .t span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(230px,46vw)}
+if(npOn){const st=document.createElement('style');st.textContent=`.np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;width:min(470px,calc(100% - 32px));height:62px;box-sizing:border-box;padding:6px 4px 6px 6px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);z-index:4;pointer-events:auto}
+.np img{width:48px;height:48px;object-fit:cover;flex:none;display:block}
+.np .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.np .t b,.np .t span{display:block;white-space:nowrap;overflow:hidden}.np .mq{display:inline-block;font-style:normal;will-change:transform}
+@keyframes npmq{0%,16%{transform:none}84%,100%{transform:translateX(var(--d))}}
 .np .t b{font-weight:700}.np .t span{color:var(--dim)}
-.np .c{display:flex;flex:none}.np .c button{width:32px;height:30px;display:grid;place-items:center;color:var(--fg)}
-.np .c svg{width:11px;height:11px}.np .bar{position:absolute;left:0;bottom:-1px;height:1px;background:var(--volt);width:0;transition:width 1s linear}
+.np .c{display:flex;flex:none}.np .c button{width:54px;height:50px;display:grid;place-items:center;color:var(--fg)}
+.np .c svg{width:20px;height:20px}.np .bar{position:absolute;left:0;bottom:-1px;height:1px;background:var(--volt);width:0;transition:width 1s linear}
 .np.ask{cursor:pointer}.np.ask .c,.np.ask img{display:none}
 @media (min-aspect-ratio:1/1){
- #hud:not([hidden])~.np{left:max(16px,env(safe-area-inset-left,0px));transform:none;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:min(430px,calc(100% - min(340px,48%) - 48px))}
+ #hud:not([hidden])~.np{left:max(16px,env(safe-area-inset-left,0px));transform:none;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(470px,calc(100% - min(340px,48%) - 48px))}
  .np-on .hud .frame{padding-bottom:var(--npH,0px)}}
 @media (max-aspect-ratio:1/1){
- .np{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;max-width:none}
- .np .t{flex:1}.np .t b,.np .t span{max-width:none}
+ .np{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;width:auto}
  .np-on .hud{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px) + var(--npH,0px))}}`;document.head.appendChild(st);
  document.body.insertAdjacentHTML('beforeend',`<div class="np" id="np" hidden><img id="npI" alt="" hidden><div class="t"><b id="npT"></b><span id="npA"></span></div><div class="c"><button id="npB" aria-label="Previous track">${IC.prev}</button><button id="npP" aria-label="Play">${IC.play}</button><button id="npN" aria-label="Next track">${IC.next}</button></div><i class="bar" id="npBar"></i></div>`);
  const cmd=c=>{try{NATIVE.mediaCmd(c);}catch(e){}setTimeout(npPoll,250);};
@@ -593,6 +597,32 @@ if(npOn){const st=document.createElement('style');st.textContent=`.np{position:f
  $('npP').addEventListener('click',e=>{e.stopPropagation();cmd(npPlaying?'pause':'play');npPlaying=!npPlaying;$('npP').innerHTML=npPlaying?IC.pause:IC.play;});
  $('np').addEventListener('click',()=>{if($('np').classList.contains('ask'))try{NATIVE.openMediaAccess();}catch(e){}});
  setInterval(npPoll,1000);setTimeout(npPoll,300);}
+
+/* ---------- scene cycle: hop between the visuals at random on a timer ---------- */
+const CYC_SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html',glyph:'glyph.html'};
+const CYC_TIMES=[[30,'30 S'],[60,'1 MIN'],[180,'3 MIN'],[300,'5 MIN'],[600,'10 MIN']];
+const scy={on:false,secs:180};try{Object.assign(scy,JSON.parse(localStorage.getItem('slickCycle')||'{}'));}catch(e){}
+let cycTm=0;
+const cycSave=()=>{try{localStorage.setItem('slickCycle',JSON.stringify({on:scy.on,secs:scy.secs}));}catch(e){}};
+const cycLabel=()=>(CYC_TIMES.find(c=>c[0]===scy.secs)||[0,scy.secs+' S'])[1];
+function cycGo(){const pool=Object.keys(CYC_SCENES).filter(k=>k!==S.scene),v=pool[Math.random()*pool.length|0];
+ try{if(S.scene==='signal'&&NATIVE&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(e){}
+ try{localStorage.setItem('slickScene',v);}catch(e){}
+ const f=$('cycFade');if(f){f.style.transition='opacity .6s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),620);}
+function cycArm(){clearTimeout(cycTm);if(scy.on&&NATIVE)cycTm=setTimeout(cycGo,scy.secs*1000);}
+function cycPaint(){const b=$('cycBtn');if(!b)return;b.setAttribute('aria-pressed',scy.on?'true':'false');b.querySelector('span').textContent=scy.on?cycLabel():'Off';}
+/* self-contained: the Source tab can draw before this module has run */
+function cycUI(){if(!NATIVE)return'';let secs=180;try{secs=JSON.parse(localStorage.getItem('slickCycle')||'{}').secs||180;}catch(e){}
+ return`<div class="grp"><span class="lab">Cycle scenes every</span><div class="seg">${[[30,'30 S'],[60,'1 MIN'],[180,'3 MIN'],[300,'5 MIN'],[600,'10 MIN']].map(([v,l])=>`<button data-scy="${v}" aria-pressed="${secs===v}">${l}</button>`).join('')}</div></div>`;}
+if(NATIVE){
+ /* fade in from the last scene, and the chip that turns cycling on or off */
+ document.body.insertAdjacentHTML('beforeend','<div id="cycFade" style="position:fixed;inset:0;background:#000;opacity:1;pointer-events:none;z-index:9;transition:opacity .7s"></div>');
+ setTimeout(()=>{$('cycFade').style.opacity='0';},40);
+ const lowl=document.querySelector('.lowl');
+ if(lowl){lowl.insertAdjacentHTML('afterbegin','<button class="rlock" id="cycBtn" aria-pressed="false"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M10 6a4 4 0 1 1-1.2-2.85"/><path d="M10 1.5v2.2H7.8"/></svg><b>Cycle</b><span>Off</span></button>');
+  $('cycBtn').addEventListener('click',()=>{scy.on=!scy.on;cycSave();cycPaint();cycArm();toast(scy.on?'Cycling scenes every '+cycLabel().toLowerCase():'Scene cycle off');});}
+ $('body').addEventListener('click',e=>{const el=e.target.closest('button[data-scy]');if(!el)return;scy.secs=+el.dataset.scy;cycSave();cycPaint();cycArm();paint();});
+ cycPaint();cycArm();}
 
 /* ---------- frame loop ---------- */
 let last=performance.now()/1000,fpsS=60,fpsT=0,moveT=0,trav=0,tspeed=0,yawPrev=0,cyc=0,CA=S.cA,CB=S.cB;
