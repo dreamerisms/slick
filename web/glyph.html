@@ -467,6 +467,7 @@ const cycLabel=()=>(CYC_TIMES.find(c=>c[0]===scy.secs)||[0,scy.secs+' S'])[1];
 function cycGo(){const pool=Object.keys(CYC_SCENES).filter(k=>k!==S.scene),v=pool[Math.random()*pool.length|0];
  try{if(S.scene==='signal'&&NATIVE&&NATIVE.stopSignals)NATIVE.stopSignals();}catch(e){}
  try{localStorage.setItem('slickScene',v);}catch(e){}
+ try{localStorage.setItem('slickCycHide','1');}catch(e){}
  const f=$('cycFade');if(f){f.style.transition='opacity .6s';f.style.opacity='1';}setTimeout(()=>location.replace(CYC_SCENES[v]),620);}
 function cycArm(){clearTimeout(cycTm);if(scy.on&&NATIVE)cycTm=setTimeout(cycGo,scy.secs*1000);}
 function cycPaint(){const b=$('cycBtn');if(!b)return;b.setAttribute('aria-pressed',scy.on?'true':'false');b.querySelector('span').textContent=scy.on?cycLabel():'Off';}
@@ -477,6 +478,8 @@ if(NATIVE){
  /* fade in from the last scene, and the chip that turns cycling on or off */
  document.body.insertAdjacentHTML('beforeend','<div id="cycFade" style="position:fixed;inset:0;background:#000;opacity:1;pointer-events:none;z-index:9;transition:opacity .7s"></div>');
  setTimeout(()=>{$('cycFade').style.opacity='0';},40);
+ /* a cycle hop lands with the HUD hidden so the show runs hands-free */
+ try{if(localStorage.getItem('slickCycHide')==='1'){localStorage.removeItem('slickCycHide');$('hud').hidden=true;}}catch(e){}
  const lowl=document.querySelector('.lowl');
  if(lowl){lowl.insertAdjacentHTML('afterbegin','<button class="rlock" id="cycBtn" aria-pressed="false"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M10 6a4 4 0 1 1-1.2-2.85"/><path d="M10 1.5v2.2H7.8"/></svg><b>Cycle</b><span>Off</span></button>');
   $('cycBtn').addEventListener('click',()=>{scy.on=!scy.on;cycSave();cycPaint();cycArm();toast(scy.on?'Cycling scenes every '+cycLabel().toLowerCase():'Scene cycle off');});}
