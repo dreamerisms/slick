@@ -128,7 +128,7 @@ const save=()=>{try{localStorage.setItem('slick01',JSON.stringify(S));}catch(e){
 const $=id=>document.getElementById(id);
 const NATIVE=window.SlickNative||null;
 let SCENE='slick';try{SCENE=localStorage.getItem('slickScene')||'slick';}catch(e){}
-if(NATIVE&&['hyper','signal','glyph'].includes(SCENE)){location.replace(SCENE+'.html');return;}
+if(NATIVE&&['hyper','signal','glyph','trace'].includes(SCENE)){location.replace(SCENE+'.html');return;}
 
 /* ---------- GL ---------- */
 const cv=$('gl');
@@ -371,7 +371,7 @@ $('body').addEventListener('click',e=>{const el=e.target.closest('button');if(!e
   Promise.resolve().then(()=>navigator.clipboard.writeText(code)).then(()=>note('Settings copied. Paste the code into Slick on your other device.'),()=>{$('code').select();note('Select and copy the code in the box.');});return;}
  else if(el.id==='applyset'){try{const raw=$('code').value.trim();if(!raw.startsWith('SLK1.'))throw 0;applyLook(JSON.parse(decodeURIComponent(escape(atob(raw.slice(5))))));note('Look loaded.');}catch(x){note('That code could not be read. Copy it again from the other device.',1);}return;}
  else if(el.dataset.set){const k=el.dataset.set;let v=el.dataset.val;
-  if(k==='scene'){if(v!=='slick'&&{hyper:1,signal:1,glyph:1}[v]){try{localStorage.setItem('slickScene',v);}catch(x){}location.replace(v+'.html');}return;}
+  if(k==='scene'){if(v!=='slick'&&{hyper:1,signal:1,glyph:1,trace:1}[v]){try{localStorage.setItem('slickScene',v);}catch(x){}location.replace(v+'.html');}return;}
   if(k==='np'){S.np=v==='true';save();paint();npPoll();return;}
   if(k==='src'){srcPref(v);if(NATIVE&&(v==='phone'||v==='capture')){note(v==='capture'?'Asking Android for capture permission...':'Starting phone audio...');NATIVE.start(v==='phone'?'vis':'cap');return;}
    if(NATIVE)NATIVE.stop();if(v==='mic'){useMic();return;}if(v==='track'){audio();$('file').click();return;}stopSrc();setSrc('demo');return;}
@@ -483,7 +483,7 @@ if(npOn){const st=document.createElement('style');st.textContent=`.np{position:f
  setInterval(npPoll,1000);setTimeout(npPoll,300);}
 
 /* ---------- scene cycle: hop between the visuals at random on a timer ---------- */
-const CYC_SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html',glyph:'glyph.html'};
+const CYC_SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html',glyph:'glyph.html',trace:'trace.html'};
 const CYC_TIMES=[[30,'30 S'],[60,'1 MIN'],[180,'3 MIN'],[300,'5 MIN'],[600,'10 MIN']];
 const scy={on:false,secs:180};try{Object.assign(scy,JSON.parse(localStorage.getItem('slickCycle')||'{}'));}catch(e){}
 let cycTm=0;
@@ -512,9 +512,9 @@ if(NATIVE){
 /* readout shows which driver is moving the scene */
 setInterval(()=>{const el=$('rTilt');if(!el)return;if(S.mdrive==='beat'){if(el.textContent!=='BEAT'){el.dataset.prev=el.textContent;el.textContent='BEAT';}}else if(el.textContent==='BEAT')el.textContent=el.dataset.prev||'DRAG';},400);
 /* ---------- scene strip: the top switch in the panel, one tiny glyph per visual ---------- */
-if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph']];
- const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
-.scn button{padding:8px 2px 7px;font-size:9px;letter-spacing:.08em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
+if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph'],['trace','▤','Trace']];
+ const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}
+.scn button{padding:8px 1px 7px;font-size:8.5px;letter-spacing:.04em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
 .scn button:first-child{border-left:0}.scn i{font-style:normal;font-size:13px;line-height:1;color:var(--fg);font-family:var(--mono)}
 .scn button[aria-current="true"]{color:var(--volt);font-weight:700;box-shadow:inset 0 -2px 0 var(--volt)}.scn button[aria-current="true"] i{color:var(--volt)}`;document.head.appendChild(st);
  $('tabs').insertAdjacentHTML('beforebegin',`<nav class="scn" id="scn" aria-label="Scene">${SC.map(([k,g,l])=>`<button data-scn="${k}" aria-current="${k===S.scene}"><i aria-hidden="true">${g}</i>${l}</button>`).join('')}</nav>`);

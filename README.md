@@ -3,8 +3,9 @@
 Android shell for the Slick audio-reactive liquid visualizer.
 
 - `web/slick.html` (Slick, liquid), `web/hyper.html` (Hyper, particles) and `web/signal.html` (Signal, a topographic
-  survey of nearby Wi-Fi and Bluetooth) and `web/glyph.html` (Glyph, an ASCII-rendered 3D object that turns with
-  the phone) are the scene sources (WebGL2). The Cycle chip hops between scenes at random on a timer.
+  survey of nearby Wi-Fi and Bluetooth), `web/glyph.html` (Glyph, an ASCII-rendered 3D object that turns with
+  the phone) and `web/trace.html` (Trace, the song drawn as a live treemap of bars in layers of ink on trace paper,
+  2D canvas) are the scene sources. The Cycle chip hops between scenes at random on a timer.
   Switch scenes from the strip at the top of the panel; the app remembers the last one.
 - Every scene has a Motion driver: **Gyro** follows the phone (or the car), **Beat** ignores the sensors and lets
   kicks, snares and bass move the scene instead.

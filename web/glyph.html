@@ -107,12 +107,12 @@ const P=[
  ['bpm','Demo tempo','source',90,220,174,1],
  ['kick','Bounce','react',0,1,.6],['snare','Wiggle','react',0,1,.5],['hat','Sparkle','react',0,1,.5],
  ['burst','Impact','react',0,2,1],['pump','Color drive','react',0,2,1],['flash','Flash','react',0,1,.35],
- ['ring','Shock rings','react',0,1,.6],['scram','Glitch','react',0,1,.4],
+ ['ring','Shock rings','react',0,1,.6],
  ['size','Size','shape',.4,1.6,1.2],['bubble','Bubble','shape',0,1,.35],['tether','Tether looseness','shape',0,1,.5],['cell','Character size','shape',6,22,11,1],
  ['steer','Steer follow','motion',0,3,1],['beatm','Beat motion','motion',0,2,1],['mom','Momentum','motion',0,1,.7],['spin','Auto rotate','motion',-2,2,.15],
  ['dust','Glitter dust','motion',0,1,.7],['cruise','Cruise','motion',0,1,.15],['warp','Road warp','motion',0,2,1],
  ['holo','Hologram','look',0,1,.6],['wipe','Wipe speed','look',0,1,.4],['spread','Gradient spread','look',.2,3,1],
- ['bright','Brightness','look',.3,2,1.25],['field','Background glyphs','look',0,1,.3],['cycle','Color cycle','look',0,1,0]
+ ['bright','Brightness','look',.3,2,1.25],['cycle','Color cycle','look',0,1,0]
 ];
 const PAL={ACID:['#c6ff00','#00e0b0','#f4ffe0','#050605'],HOLO:['#ff7ad9','#7afcff','#fff3a8','#06050a'],CHROME:['#e8f0ff','#6a7cff','#ff9ad5','#05060a'],MAGMA:['#ff4d1a','#ffcc33','#ff2a6d','#0a0403'],MONO:['#ffffff','#7c7c7c','#d6d6d6','#000000']};
 const SHAPES=['torus','cube','octa','blob','cross'];
@@ -240,7 +240,7 @@ function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=
   if(S.ring>0&&lastGeo){rings.push({r:lastGeo.R/2.108*.92,a:Math.min(1.2,s*S.ring*1.3)});if(rings.length>3)rings.shift();}
   if(S.dust>0&&lastGeo)dustBurst(Math.round(s*S.dust*16),lastGeo);}
  else if(kind===1){if(beat)bt.xv+=(Math.random()<.5?-1:1)*s*(1.5+2*S.snare)*S.beatm;
-  if(S.snare<=0)return;const a=Math.random()*6.2832,m=s*S.snare*S.burst*3.2;fx.ov[0]+=Math.cos(a)*m;fx.ov[1]+=Math.sin(a)*m;fx.shV-=s*S.pump*.18;fx.scr=Math.min(1,fx.scr+s*S.scram);}
+  if(S.snare<=0)return;const a=Math.random()*6.2832,m=s*S.snare*S.burst*3.2;fx.ov[0]+=Math.cos(a)*m;fx.ov[1]+=Math.sin(a)*m;fx.shV-=s*S.pump*.18;}
  else{if(beat)bt.zv+=(Math.random()-.5)*s*2.4*S.beatm;
   if(S.hat<=0)return;fx.spark=Math.min(1,fx.spark+s*S.hat);fx.seed=Math.random()*100;}}
 let ac,an,fd,out,srcNode,micStream,noiseBuf;
@@ -328,7 +328,7 @@ function paint(){document.documentElement.style.setProperty('--volt',S.cA);
   h+=`<div class="seg">${NATIVE?'':'<button id="fs">Fullscreen</button>'}<button id="reset">Reset controls</button></div><input type="file" id="file" accept="audio/*" hidden>`;
   h+=`<div class="grp"><label class="lab" for="code">Settings code</label><input type="text" id="code" placeholder="Paste a code to load a look" autocomplete="off" spellcheck="false"><div class="seg"><button id="copyset">Copy my settings</button><button id="applyset">Load code</button></div></div>`;}
  if(S.tab==='shape'){h+=seg('shape',SHAPES.map(s=>[s,s]),'Object');h+=seg('glyphs',Object.keys(GSETS).map(k=>[k,k]),'Characters');}
- if(S.tab==='react')h+=`<p class="note">Kick: bounce + shock ring. Snare: wiggle + glitch. Hat: sparkle. Color drive moves the gradient.</p>`;
+ if(S.tab==='react')h+=`<p class="note">Kick: bounce + shock ring. Snare: wiggle. Hat: sparkle. Color drive moves the gradient.</p>`;
  if(S.tab==='motion'){const bm=S.mdrive==='beat';h+=seg('mdrive',[['gyro','Gyro'],['beat','Beat']],'Motion driver');
   if(!bm){h+=seg('gmode',[['steer','Steering'],['full','Full gyro']],'Follow');h+=seg('tinv',[[false,'Natural'],[true,'Inverted']],'Turn');}
   h+=`<p class="note">${bm?'Kicks spin it, snares nod it, hats twitch it, bass speeds the warp.':'A 90° road turn spins it 90°. Road rumble speeds the warp.'} Flick it hard to throw glitter.</p>`;
@@ -463,7 +463,7 @@ if(npOn){const st=document.createElement('style');st.textContent=`.np{position:f
  setInterval(npPoll,1000);setTimeout(npPoll,300);}
 
 /* ---------- scene cycle: hop between the visuals at random on a timer ---------- */
-const CYC_SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html',glyph:'glyph.html'};
+const CYC_SCENES={slick:'index.html',hyper:'hyper.html',signal:'signal.html',glyph:'glyph.html',trace:'trace.html'};
 const CYC_TIMES=[[30,'30 S'],[60,'1 MIN'],[180,'3 MIN'],[300,'5 MIN'],[600,'10 MIN']];
 const scy={on:false,secs:180};try{Object.assign(scy,JSON.parse(localStorage.getItem('slickCycle')||'{}'));}catch(e){}
 let cycTm=0;
@@ -492,9 +492,9 @@ if(NATIVE){
 /* readout shows which driver is moving the scene */
 setInterval(()=>{const el=$('rTilt');if(!el)return;if(S.mdrive==='beat'){if(el.textContent!=='BEAT'){el.dataset.prev=el.textContent;el.textContent='BEAT';}}else if(el.textContent==='BEAT')el.textContent=el.dataset.prev||'DRAG';},400);
 /* ---------- scene strip: the top switch in the panel, one tiny glyph per visual ---------- */
-if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph']];
- const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
-.scn button{padding:8px 2px 7px;font-size:9px;letter-spacing:.08em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
+if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','◎','Signal'],['glyph','▓','Glyph'],['trace','▤','Trace']];
+ const st=document.createElement('style');st.textContent=`.scn{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}
+.scn button{padding:8px 1px 7px;font-size:8.5px;letter-spacing:.04em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--line);min-width:0}
 .scn button:first-child{border-left:0}.scn i{font-style:normal;font-size:13px;line-height:1;color:var(--fg);font-family:var(--mono)}
 .scn button[aria-current="true"]{color:var(--volt);font-weight:700;box-shadow:inset 0 -2px 0 var(--volt)}.scn button[aria-current="true"] i{color:var(--volt)}`;document.head.appendChild(st);
  $('tabs').insertAdjacentHTML('beforebegin',`<nav class="scn" id="scn" aria-label="Scene">${SC.map(([k,g,l])=>`<button data-scn="${k}" aria-current="${k===S.scene}"><i aria-hidden="true">${g}</i>${l}</button>`).join('')}</nav>`);
@@ -575,7 +575,7 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const rr=[0,1,2].map(i=>rings[i]?rings[i].r:0),ra=[0,1,2].map(i=>rings[i]?rings[i].a:0);
  pass(PR.cell,cellFb,COLS,ROWS,{uR:new Float32Array(ROT),uOff:[fx.o[0]*.35,fx.o[1]*.35,0],uScale:scale,uBub:S.bubble,uWob:Math.min(1.5,lvl[0]+lvl[2]*.6),uTime:t,uAsp:ASP,uShape:Math.max(0,SHAPES.indexOf(S.shape))});
  pass(PR.gly,null,RW,RH,{uCells:cellTex,uAtlas:atlas,uFx:fxTex,uAtlas2:atlas2,uCellPx:CPX,uN:atlasN,uN2:U2.length,uTime:t,uHolo:S.holo,uWipe:S.wipe+fx.spark*.4,uSpread:S.spread*(1+lvl[1]*.3),uShift:fx.shift,
-  uBright:S.bright*(1+flash*.6),uField:S.field,uSpark:fx.spark,uSeed:fx.seed,uFlash:flash*.5,uAsp:ASP,uScr:fx.scr,uTick:t*14,uRingC:[fx.o[0]*.35/2.108,fx.o[1]*.35/2.108],uRingR:rr,uRingA:ra,
+  uBright:S.bright*(1+flash*.6),uField:0,uSpark:fx.spark,uSeed:fx.seed,uFlash:flash*.5,uAsp:ASP,uScr:fx.scr,uTick:t*14,uRingC:[fx.o[0]*.35/2.108,fx.o[1]*.35/2.108],uRingR:rr,uRingA:ra,
   c1:col('cA'),c2:col('cB'),c3:col('cC'),cBg:hexs(S.cBg)});}
 requestAnimationFrame(frame);
 })();
