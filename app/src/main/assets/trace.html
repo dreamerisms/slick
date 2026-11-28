@@ -110,7 +110,7 @@ const P=[
  ['burst','Impact','react',0,2,1],['flash','Dip','react',0,1,.3],['rare','Rare pulls','react',0,1,.5],
  ['hist','History bars','grid',8,48,24,1],['gap','Gutter','grid',0,1,.35],['snap','Snap','grid',0,1,.75],['nest','Detail','grid',0,1,.8],['data','Data text','grid',0,1,.7],
  ['para','Parallax','motion',0,2,1],['beatm','Beat motion','motion',0,2,1],['drift','Drift','motion',0,1,.3],
- ['sheets','Trace sheets','look',0,1,.6],['back','Back layer','look',0,1,.5],['head','Headline','look',0,1,.6],['foil','Foil','look',0,1,.8],['holo','Hologram','look',0,1,.6],['pop','Color pops','look',0,1,.6]
+ ['sheets','Trace sheets','look',0,1,.6],['back','Back layer','look',0,1,.5],['head','Headline','look',0,1,.6],['foil','Foil','look',0,1,.8],['holo','Hologram','look',0,1,.6],['pop','Color pops','look',0,1,.6],['seal','Foil seal','look',0,1,.8]
 ];
 const PAL={TRACE:['#ecebe6','#17171a','#ff5e4a','#c8ff3c'],FROST:['#e7ebef','#0f1726','#4f6bff','#ff8fb1'],SOLAR:['#eee8d6','#1c2a1e','#e8742c','#86e04f'],NIGHT:['#111113','#e9e7e1','#ff5e4a','#c8ff3c'],PRINT:['#10295a','#e8eefc','#ffd23f','#7cf3ff']};
 const S={paper:PAL.TRACE[0],ink:PAL.TRACE[1],pop1:PAL.TRACE[2],pop2:PAL.TRACE[3],tinv:false,rlock:'',order:'size',src:'demo',sound:false,tab:'grid'};
@@ -142,8 +142,17 @@ function applyColors(){const r=document.documentElement.style;r.setProperty('--v
 if(!cx){$('fatal').hidden=false;throw new Error('no 2d');}
 
 /* ---------- the song as bars: four kicks close a bar; each bar keeps its hits and its own energy trace ---------- */
-const bars=[];let barN=0,cur=null,barDur=2.2,lastKick=0,bpmEst=0,songT=0,eLong=.3,hatT=0,pulls=0,liveRect=null;
-const kickGaps=[];
+const bars=[];let barN=0,cur=null,barDur=2.2,lastKick=0,songT=0,eLong=.3,hatT=0,pulls=0,liveRect=null;
+/* tempo lock: a histogram of kick gaps over ~24 s, folded into 88-178 BPM; it only moves to a new tempo that holds for 6 s */
+const kickLog=[];let bpmEst=0,bpmCand=0,bpmCandT=0,bpmCalcT=0,kickP=0;
+function bpmUpdate(t){if(t-bpmCalcT<1)return;bpmCalcT=t;if(kickLog.length<6)return;const hist=new Float32Array(92);
+ for(let i=0;i<kickLog.length;i++)for(let j=i+1;j<Math.min(kickLog.length,i+5);j++){const g=kickLog[j]-kickLog[i];if(g<.2||g>2.4)continue;let b=60/g;while(b<88)b*=2;while(b>=178)b/=2;
+  const c=b-88;for(let d=-2;d<=2;d++){const q=Math.round(c)+d;if(q>=0&&q<92)hist[q]+=Math.exp(-((q-c)**2)/2);}}
+ let bi=0;for(let q=1;q<92;q++)if(hist[q]>hist[bi])bi=q;if(hist[bi]<2)return;
+ let sw=0,sx=0;for(let q=Math.max(0,bi-2);q<=Math.min(91,bi+2);q++){sw+=hist[q];sx+=hist[q]*q;}const cand=88+sx/sw;
+ if(!bpmEst){bpmEst=cand;return;}
+ if(Math.abs(cand-bpmEst)<2.5){bpmEst+=(cand-bpmEst)*.15;bpmCandT=0;}
+ else if(!bpmCandT||Math.abs(cand-bpmCand)>3){bpmCand=cand;bpmCandT=t;}else if(t-bpmCandT>6){bpmEst=cand;bpmCandT=0;}}
 function newBar(t,seed){if(cur){const d=t-cur.t0;if(d>.3&&d<8)barDur+=(d-barDur)*.3;cur.live=false;}
  cur={id:++barN,t0:t,ts:songT,k:0,s:0,h:0,e:0,w:seed?.35+Math.random()*.9:.7,cw:[.35,.35,.35],env:new Float32Array(36),fl:[0,0,0],inv:0,pin:Math.random()<.14,live:true};
  if(!seed){for(const b of bars)b.w*=.92;if(Math.random()<.35)shuffleSheet();}
@@ -158,13 +167,12 @@ const rare={t:-99,id:0,n:0};
 function emit(kind,s){const el=$('h'+kind);el.classList.add('on');setTimeout(()=>el.classList.remove('on'),70);
  const t=performance.now()/1000,beat=S.mdrive==='beat';if(!cur)newBar(t);
  if(kind===0){if(cur.k>=4)newBar(t);cur.k++;cur.w+=s*(.4+1.2*S.kick)*S.burst;cur.fl[0]=1;
-  if(lastKick&&t-lastKick>.22&&t-lastKick<2){kickGaps.push(t-lastKick);if(kickGaps.length>12)kickGaps.shift();
-   const so=[...kickGaps].sort((a,b)=>a-b);let b=60/so[so.length>>1];while(b<80)b*=2;while(b>190)b/=2;bpmEst+=(b-bpmEst)*(bpmEst?.35:1);}
+  kickLog.push(t);while(kickLog.length&&t-kickLog[0]>24)kickLog.shift();kickP=1;specKick=1;
   lastKick=t;blinkSome(0,1+(s*3*S.kick|0));flash=Math.max(flash,s*S.flash);
   if(beat){const a=Math.random()*6.2832;par.vx+=Math.cos(a)*s*320*S.beatm;par.vy+=Math.sin(a)*s*200*S.beatm;}
   /* a rare pull: a hard kick well above the running energy flips a cell into a foil card */
   const lv=lvl[0]+lvl[1]*.7+lvl[2]*.4;
-  if(S.rare>0&&s>.7&&lv>eLong*1.3+.12&&t-rare.t>30-24*S.rare&&disp.size){let best=null;for(const d of disp.values())if(d.alive&&(!best||d.tw*d.th>best.tw*best.th))best=d;
+  if(S.rare>0&&s>.7&&lv>eLong*1.3+.12&&t-rare.t>30-24*S.rare&&disp.size){let best=null;for(const d of disp.values())if(d.alive&&!d.ref.spec&&(!best||d.tw*d.th>best.tw*best.th))best=d;
    if(best){rare.t=t;rare.id=best.ref.id;rare.n=++pulls;}}}
  else if(kind===1){cur.s++;cur.w+=s*(.3+.8*S.snare)*S.burst;cur.fl[1]=1;blinkSome(1,1+(s*2*S.snare|0));
   if(Math.random()<S.snare*s)shuffleSheet();if(Math.random()<S.snare*.5)invertSome();
@@ -418,6 +426,7 @@ if(NATIVE){const SC=[['slick','≈','Slick'],['hyper','∴','Hyper'],['signal','
 /* ---------- now playing data for the headline, progress pill and halftone art ---------- */
 let npD={title:'',artist:'',app:'',playing:false,pos:0,dur:0,at:0},artSrc='',artImg=null;
 function npData(){if(!NATIVE||!NATIVE.media)return;try{const d=JSON.parse(NATIVE.media());if(!d.access)return;
+ if((d.title||'')!==npD.title){kickLog.length=0;bpmEst=0;}
  npD={title:d.title||'',artist:d.artist||'',app:d.app||'',playing:!!d.playing,pos:+d.pos||0,dur:+d.dur||0,at:performance.now()};
  if(d.art&&d.art!==artSrc){artSrc=d.art;const im=new Image();im.onload=()=>{artImg=im;artDirty=true;};im.src=d.art;}}catch(e){}}
 setInterval(npData,1000);npData();
@@ -493,8 +502,31 @@ function drawChild(b,i,c,age){const f=b.fl[i],x=c.x,y=c.y,w=c.w,h=c.h;if(w<1.5||
  if(w>34&&h>15&&S.data>.25){cx.globalAlpha=age;const lab=['K','S','H'][i]+'×'+p2([b.k,b.s,b.h][i]);cx.font=`700 8px ${MONO}`;
   if(i===0){cx.fillStyle=S.paper;}else{cx.fillStyle=S.paper;cx.fillRect(x+2,y+2,cx.measureText(lab).width+5,11);cx.fillStyle=S.ink;}cx.fillText(lab,x+4,y+4);}
  cx.globalAlpha=1;}
+/* the one live meter: a dark block in the grid, scrolling foil bars and the song clock */
+const SPEC={spec:true,id:'spec'},specH=new Float32Array(72),specK=new Uint8Array(72);let specAcc=0,specMax=0,specKick=0,specRect=null;
+function specStep(dt,lv){specMax=Math.max(specMax,lv);specAcc+=dt;if(specAcc>=1/28){specAcc=0;specH.copyWithin(0,1);specK.copyWithin(0,1);specH[71]=Math.min(1,specMax*.75);specK[71]=specKick;specMax=0;specKick=0;}}
+function drawSpec(x,y,w,h,t){const st=npD.dur?songPos():songT;cx.fillStyle=S.ink;cx.fillRect(x,y,w,h);
+ cx.fillStyle=S.paper;cx.textBaseline='top';cx.font=`700 9px ${MONO}`;cx.fillText('● SPECTRUM / LIVE',x+7,y+7);
+ cx.textAlign='right';cx.font=`400 9px ${MONO}`;cx.fillText('BAR '+String(barN).padStart(3,'0'),x+w-7,y+7);cx.textAlign='left';
+ const fs=Math.max(12,Math.min(h*.26,w*.17));cx.font=`900 ${fs|0}px ${GROT}`;cx.fillText(tc(st),x+7,y+21);
+ const by=y+21+fs+8,bh=y+h-8-by;if(bh<10)return;const n=Math.max(12,Math.min(72,(w-14)/6|0)),bw=(w-14)/n,ph=st*.06+t*.04;
+ cx.fillStyle=foil(x,by,x+w,by,ph);
+ for(let i=0;i<n;i++){const v=specH[72-n+i];if(v>.01)cx.fillRect(x+7+i*bw,by+bh-v*bh,Math.max(1,bw-1.5),v*bh);}
+ cx.fillStyle=S.paper;for(let i=0;i<n;i++)if(specK[72-n+i]){cx.globalAlpha=.85;cx.fillRect(x+7+i*bw,by+bh-specH[72-n+i]*bh-2,Math.max(1,bw-1.5),1.5);}
+ cx.globalAlpha=.3;cx.fillRect(x+7,by+bh+1,w-14,1);cx.globalAlpha=1;}
+/* foil seal: a holographic authenticity sticker stamped on the meter's corner, turning with the music */
+let sealRot=0;const SEAL_TXT='TRACE PAPER · SERIES 05 · AUTHENTIC · AUDIO PULL · ';
+function drawSeal(x,y,r,t){const rr=r*(1+kickP*.08),ph=t*(.05+S.holo*.25);cx.save();cx.translate(x,y);
+ cx.fillStyle=ringGrad(0,0,ph);cx.beginPath();for(let i=0;i<=48;i++){const a=i/48*6.2832,q=rr*(i%2?.93:1);i?cx.lineTo(Math.cos(a)*q,Math.sin(a)*q):cx.moveTo(q,0);}cx.fill();
+ const g=cx.createLinearGradient(-rr,-rr,rr,rr),o=(t*.35)%1.6-.3;const cl=v=>Math.min(1,Math.max(0,v));g.addColorStop(cl(o-.15),'rgba(255,255,255,0)');g.addColorStop(cl(o),'rgba(255,255,255,.75)');g.addColorStop(cl(o+.15),'rgba(255,255,255,0)');
+ cx.fillStyle=g;cx.fill();cx.strokeStyle='rgba(12,12,20,.55)';cx.lineWidth=.8;cx.beginPath();cx.arc(0,0,rr*.78,0,6.2832);cx.stroke();cx.beginPath();cx.arc(0,0,rr*.52,0,6.2832);cx.stroke();
+ cx.rotate(sealRot);cx.fillStyle='rgba(12,12,20,.8)';cx.font=`700 ${Math.max(6,rr*.15)|0}px ${MONO}`;cx.textBaseline='middle';cx.textAlign='center';
+ const L=SEAL_TXT.length;for(let i=0;i<L;i++){cx.save();cx.rotate(i/L*6.2832);cx.translate(0,-rr*.65);cx.fillText(SEAL_TXT[i],0,0);cx.restore();}
+ cx.rotate(-sealRot);cx.font=`italic ${rr*.5|0}px ${SERIF}`;cx.fillText('S',0,rr*.04);cx.font=`700 ${Math.max(5,rr*.12)|0}px ${MONO}`;cx.fillText(bpmEst?Math.round(bpmEst)+'':'05',0,rr*.33);
+ cx.restore();cx.textAlign='left';}
 function drawCells(t){const g=1+S.gap*8,dd=S.data,dark=lum(S.paper)<.45;cx.textBaseline='top';cx.textAlign='left';liveRect=null;let rareRect=null;
- for(const d of disp.values()){const b=d.ref;const x=d.x+g/2,y=d.y+g/2,w=d.w-g,h=d.h-g;if(w<3||h<3)continue;
+ specRect=null;for(const d of disp.values()){const b=d.ref;const x=d.x+g/2,y=d.y+g/2,w=d.w-g,h=d.h-g;if(w<3||h<3)continue;
+  if(b.spec){drawSpec(x,y,w,h,t);specRect=[x,y,w,h];continue;}
   const age=b.live?1:Math.max(.5,1-(barN-b.id)/Math.max(8,S.hist)*.55);cx.globalAlpha=age;
   cx.strokeStyle=S.ink;cx.lineWidth=1;cx.strokeRect(Math.round(x)+.5,Math.round(y)+.5,Math.round(w)-1,Math.round(h)-1);
   let iy=y+3,ih=h-3;
@@ -502,7 +534,6 @@ function drawCells(t){const g=1+S.gap*8,dd=S.data,dark=lum(S.paper)<.45;cx.textB
    if(w>128&&dd>.3){cx.textAlign='right';cx.font=`400 9px ${MONO}`;cx.fillText(tc(b.ts),x+w-5,y+5);cx.textAlign='left';}
    const two=h>64&&dd>.45;if(two){cx.font=`400 8px ${MONO}`;cx.fillStyle=ca(S.ink,.72);cx.fillText(`K${p2(b.k)} S${p2(b.s)} H${p2(b.h)}  E${b.e.toFixed(2)}`,x+5,y+17);}
    iy=y+(two?29:18);ih=h-(iy-y);}
-  if(h>96&&w>84&&dd>.2){const gh=Math.min(22,ih*.24);drawEnv(b,x+6,iy,w-12,gh,t);iy+=gh+5;ih-=gh+5;}
   cx.globalAlpha=1;
   if(S.nest>.02&&ih>8&&w>10){const pad=2+4*S.nest,ch=[],its=[{id:0,w:b.cw[0],ref:0},{id:1,w:b.cw[1],ref:1},{id:2,w:b.cw[2],ref:2}].sort((p,q)=>q.w-p.w);
    squarify(its,x+pad,iy+pad*.4,w-2*pad,ih-pad*1.4,ch);for(const c of ch)drawChild(b,c.ref,c,age);}
@@ -511,6 +542,7 @@ function drawCells(t){const g=1+S.gap*8,dd=S.data,dark=lum(S.paper)<.45;cx.textB
   cx.strokeStyle=S.ink;cx.lineWidth=1;plus(Math.round(d.x),Math.round(d.y),4);
   if(b.live)liveRect=[x,y,w,h];if(b.id===rare.id)rareRect=[x,y,w,h];}
  cx.globalAlpha=1;
+ if(specRect&&S.seal>.01){const[x,y,w,h]=specRect,r=Math.max(16,Math.min(42,Math.min(w,h)*.3))*(.6+.4*S.seal);cx.globalAlpha=Math.min(1,S.seal*1.4);drawSeal(Math.min(W-r-6,x+w-r*.35),Math.max(r+6,y+r*.35),r,t);cx.globalAlpha=1;}
  /* the live bar: foil edge plus a ring that fills as the bar's four kicks land */
  if(liveRect){const[x,y,w,h]=liveRect,ph=t*(.06+S.holo*.3);
   if(S.foil>.01){cx.globalAlpha=S.foil;cx.strokeStyle=foil(x,y,x+w,y+h,ph);cx.lineWidth=2.5;cx.strokeRect(x+1.25,y+1.25,w-2.5,h-2.5);cx.globalAlpha=1;}
@@ -562,12 +594,13 @@ function frame(nowMs){requestAnimationFrame(frame);const t=nowMs/1000,fdt=Math.m
  const lv=lvl[0]+lvl[1]*.7+lvl[2]*.4;eLong+=(lv-eLong)*fdt*.25;
  if(!cur||t-cur.t0>Math.max(3.2,barDur*1.8))newBar(t);
  cur.e+=lv*fdt;cur.w+=lv*fdt*.35*S.kick;{const i=Math.min(35,Math.max(0,((t-cur.t0)/barDur*36)|0));cur.env[i]=Math.max(cur.env[i],Math.min(1,lv*.8));}
- motionStep(fdt);
+ motionStep(fdt);specStep(fdt,lv);bpmUpdate(t);kickP*=Math.exp(-fdt*7);sealRot+=fdt*(.12+lv*.5);
  const k=1-Math.exp(-fdt*(3+S.snap*26));
  for(const b of bars){const tg=[b.k+.35,b.s+.35,b.h*.35+.35];for(let i=0;i<3;i++){b.cw[i]+=(tg[i]-b.cw[i])*k;b.fl[i]*=Math.exp(-fdt*9);}b.inv*=Math.exp(-fdt*8);}
  /* lay out the bars, and their four-bar sections behind them */
  const m=Math.max(14,Math.min(W,H)*.035),items=bars.map(b=>({id:b.id,w:Math.max(.05,b.w),ref:b}));
- if(S.order==='size')items.sort((p,q)=>q.w-p.w);else items.reverse();
+ {let sum=0;for(const it of items)sum+=it.w;items.push({id:'spec',w:sum*.2+.5,ref:SPEC});}
+ if(S.order==='size')items.sort((p,q)=>q.w-p.w);else{items.reverse();const sp=items.shift();items.splice(Math.min(2,items.length),0,sp);}
  const tg=[];squarify(items,m,m,W-2*m,H-2*m,tg);settle(disp,tg,k);
  const sec=new Map();for(const b of bars){const g=(b.id-1)>>2;sec.set(g,(sec.get(g)||0)+b.w);}
  const sit=[...sec].reverse().map(([g,w])=>({id:g,w,ref:{n:g+1}})),st=[];squarify(sit,-30,-30,W+60,H+60,st);settle(secDisp,st,k*.5);
